@@ -65,7 +65,8 @@ export function createMiniappServer({
       }
 
       if (pathname.startsWith("/api/") && STATE_CHANGING_METHODS.has(req.method)) {
-        assertStateChangingRequest(req, configuredOrigins);
+        if (pathname !== "/api/activity/token")
+          assertStateChangingRequest(req, configuredOrigins);
         requireJsonContentType(req);
       }
 

@@ -50,7 +50,10 @@ test("miniapp security boundaries", async () => {
     assert.deepEqual(await response.json(), { ok: true, ready: true });
     response = await fetch(base + "/api/activity/token", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "sec-fetch-site": "cross-site",
+      },
       body: JSON.stringify({ code: "valid-code" }),
     });
     assert.equal(response.status, 200);
