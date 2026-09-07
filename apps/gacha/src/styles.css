@@ -2386,3 +2386,8 @@ button:focus-visible { outline: 2px solid var(--jade); outline-offset: 3px; }
 .hk-ritual-depth::after {
   display: none !important;
 }
+.hk-vault-title { flex-direction: row; align-items: baseline; }
+.hk-rate-level { display: flex; align-items: center; gap: 5px; }
+.hk-rate-level strong { color: var(--gold-bright); font-family: var(--font-system); font-size: 13px; }
+.hk-rate-level .hk-rate-step { width: 24px; height: 24px; }
+

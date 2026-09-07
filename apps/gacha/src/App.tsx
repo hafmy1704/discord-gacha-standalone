@@ -94,12 +94,12 @@ if (initialToken) history.replaceState(null, "", `${location.pathname}${location
 let token = initialToken;
 let tokenPromise: Promise<string> | null = null;
 const clientId = import.meta.env.VITE_DISCORD_APPLICATION_ID;
-const apiPrefix = "/.proxy";
+const apiPrefix = "";
+const activityTokenPath = "/api/activity/token";
 const GACHA_ANIMATION_MS = 3000;
 const GACHA_COOLDOWN_MS = 4000;
 const SESSION_POLL_MS = 7000;
 const LEADERBOARD_POLL_MS = 9000;
-const ACTIVITY_TOKEN_ENDPOINTS = [`${apiPrefix}/api/activity/token`, "/api/activity/token"] as const;
 const statLabels: Record<string, string> = {
   attack: "Công", hp: "HP", accuracy: "Chuẩn",
   basicPower: "Kỹ năng thường", skillPower: "Kỹ năng", ultimatePower: "Tuyệt kỹ",
@@ -144,27 +144,26 @@ function isTransientActivityTokenError(code: string) {
   return code.startsWith("empty_response_")
     || code.startsWith("invalid_json_response_")
     || code.startsWith("http_5")
-    || code === "activity_auth_failed";
+    || code === "activity_auth_unavailable";
 }
 
 async function exchangeActivityCodeForLaunchToken(code: string): Promise<void> {
   let lastError: unknown;
-  for (const endpoint of ACTIVITY_TOKEN_ENDPOINTS) {
-    try {
+  try {
       const { response, value } = await fetchJsonWithRetry(
-        endpoint,
+        activityTokenPath,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ code }),
         },
-        "/api/activity/token",
+        activityTokenPath,
         (response, value) => {
           if (!response) return value instanceof Error && value.message !== "activity_token_invalid_payload";
           if (response.ok) return false;
           const code = typeof value === "object" && value !== null && "error" in value && typeof value.error === "string"
             ? value.error
-            : `http_${response.status}_/api/activity/token`;
+            : `http_${response.status}_${activityTokenPath}`;
           return response.status >= 500 || isTransientActivityTokenError(code);
         },
       );
@@ -173,7 +172,6 @@ async function exchangeActivityCodeForLaunchToken(code: string): Promise<void> {
       return;
     } catch (reason) {
       lastError = reason;
-    }
   }
   throw lastError;
 }
@@ -335,19 +333,17 @@ const VaultRatePanel = ({ session, catalog }: { session: Session; catalog: Catal
   return (
     <section className="hk-panel hk-info-card">
       <div className="hk-info-vault">
-        <div className="hk-panel-heading"><span className="hk-kicker">TÀNG BẢO CÁC</span><strong>Cấp {session.vaultLevel}</strong></div>
-        <div className="hk-vault-title"><span>Bảo Khố Hồn Khí</span><b>{formatNumber(session.vaultProgressXp)} <small>/ {formatNumber(session.upgradeCost)} Hồn Thiết</small></b></div>
+        <div className="hk-panel-heading"><span className="hk-kicker">TÀNG BẢO CÁC</span><div className="hk-rate-level">
+          <button type="button" className="hk-rate-step" aria-label="Xem cấp thấp hơn" disabled={previewIndex <= 0} onClick={() => setPreviewIndex((value) => value - 1)}>‹</button>
+          <strong>Cấp {previewLevel}</strong>
+          <button type="button" className="hk-rate-step" aria-label="Xem cấp cao hơn" disabled={previewIndex >= session.tierRatePreviews.length - 1} onClick={() => setPreviewIndex((value) => value + 1)}>›</button>
+        </div></div>
+        <div className="hk-vault-title"><span>Hồn Thiết</span><b>{formatNumber(session.vaultProgressXp)} <small>/ {formatNumber(session.upgradeCost)}</small></b></div>
         <div className="hk-progress"><i style={{ width: `${session.vaultProgress}%` }} /></div>
-        <p className="hk-vault-auto-upgrade">Cấp Bảo Khố tự suy ra từ tổng Hồn Thiết.</p>
       </div>
       <div className="hk-info-divider" aria-hidden="true" />
       <div className="hk-info-rate">
-        <div className="hk-rate-headline"><span className="hk-kicker">PHÂN BỔ TIER</span><small>theo cấp Bảo Khố</small></div>
-        <div className="hk-rate-preview">
-           <button type="button" className="hk-rate-step" aria-label="Xem cấp thấp hơn" disabled={previewIndex <= 0} onClick={() => setPreviewIndex((value) => value - 1)}>‹</button>
-          <div className="hk-rate-preview-label"><strong>Cấp {previewLevel}</strong><span className={isCurrent ? "" : "is-preview"}>{isCurrent ? "hiện tại" : "xem trước"}</span></div>
-           <button type="button" className="hk-rate-step" aria-label="Xem cấp cao hơn" disabled={previewIndex >= session.tierRatePreviews.length - 1} onClick={() => setPreviewIndex((value) => value + 1)}>›</button>
-        </div>
+        <div className="hk-rate-headline"><span className="hk-kicker">TỶ LỆ PHẨM CẤP</span></div>
         <div className="hk-rate-list">
           {shown.map((entry) => (
             <div key={entry.tier} className={`hk-rate-row tier-${entry.tier}`}>
@@ -753,6 +749,11 @@ function readableError(reason: unknown) {
     gacha_empty: "Catalog Hồn Khí chưa sẵn sàng.",
     activity_auth_failed: "Discord chưa cấp được phiên Activity. Đóng rồi mở lại Activity.",
     activity_open_in_discord: "Hãy mở bằng lệnh /gacha trong Discord, không mở trực tiếp URL tunnel.",
+    "expired launch token": "Phiên Activity đã hết hạn. Đóng rồi mở lại Activity.",
+    "invalid launch token": "Phiên Activity không hợp lệ. Đóng rồi mở lại Activity.",
+    csrf_rejected: "Phiên bảo mật không hợp lệ. Đóng rồi mở lại Activity.",
+    rate_limited: "Thao tác quá nhanh. Chờ một chút rồi thử lại.",
+    backend_unavailable: "Backend đang tạm thời không khả dụng. Thử lại sau.",
   }[code] ?? "Backend từ chối lượt thao tác. Thử lại sau.";
 }
 
@@ -774,3 +775,6 @@ function errorMessage(reason: unknown) {
     ? "Hãy bấm Thức Tỉnh trong Discord trước."
     : `Không tải được Hồn Khí: ${code}`;
 }
+
+
+

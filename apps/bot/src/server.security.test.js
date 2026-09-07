@@ -95,6 +95,18 @@ test("miniapp security boundaries", async () => {
     response = await fetch(base + "/api/gacha/draw", {
       method: "POST",
       headers: {
+        authorization: "Bearer " + cookie.match(/launch_session=([^;]+)/)[1],
+        origin: "https://discord.com",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ requestId: "bearer-cross-origin-request" }),
+    });
+    assert.equal(response.status, 403);
+    assert.equal(drawCalls, 1);
+
+    response = await fetch(base + "/api/gacha/draw", {
+      method: "POST",
+      headers: {
         cookie: cookie.split(";")[0],
         origin: base,
         "sec-fetch-site": "cross-site",
@@ -118,7 +130,7 @@ test("miniapp security boundaries", async () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ code: "invalid-code" }),
       });
-      assert.equal(response.status, 503);
+      assert.equal(response.status, 401);
     }
     response = await fetch(base + "/api/activity/token", {
       method: "POST",
@@ -131,3 +143,9 @@ test("miniapp security boundaries", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+
+
+
+
+

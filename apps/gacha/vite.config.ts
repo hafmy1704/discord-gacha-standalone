@@ -25,24 +25,10 @@ export default defineConfig(({ mode }) => {
     server: {
       allowedHosts,
       proxy: {
-        "/.proxy": {
-          target: backendTarget,
-          changeOrigin: true,
-          configure(proxy) {
-            proxy.on("error", (_error, _request, response) => {
-              if (!response.headersSent) {
-                response.writeHead(502, {
-                  "cache-control": "no-store",
-                  "content-type": "application/json; charset=utf-8",
-                });
-              }
-              response.end(JSON.stringify({ error: "backend_unavailable" }));
-            });
-          },
-        },
         "/api": {
           target: backendTarget,
           changeOrigin: true,
+          xfwd: true,
         },
       },
     },
@@ -61,3 +47,4 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+

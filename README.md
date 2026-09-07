@@ -161,7 +161,6 @@ DISCORD_CLIENT_SECRET=Client_Secret
 WELCOME_CHANNEL_ID=ID_Kênh_Welcome
 SOUL_AWAKENING_CHANNEL_ID=ID_Kênh_Thức_Tỉnh
 SON_MON_CATEGORY_ID=ID_Category_Sơn_Môn
-CHAT_REWARD_CHANNEL_IDS=ID1,ID2,ID3
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=service_role_key
 MINIAPP_SIGNING_SECRET=minimum_32_ky_tu_ngau_nhien
@@ -169,7 +168,7 @@ VITE_DISCORD_APPLICATION_ID=Application_ID  # Cho frontend
 HOST=127.0.0.1
 PORT=6969
 # Comma-separated exact frontend origins for dev/proxy deployments.
-MINIAPP_ALLOWED_ORIGINS=http://localhost:5173
+MINIAPP_ALLOWED_ORIGINS=https://1544680848937451600.discordsays.com,https://gacha.msvn.io.vn
 # Comma-separated Vite hostnames; leave empty for local-only dev.
 VITE_ALLOWED_HOSTS=
 VITE_BACKEND_HOST=127.0.0.1
@@ -406,9 +405,15 @@ Collection tăng `roll_count` sau mỗi lượt, kể cả món được trang b
 1. Vào [Discord Developer Portal](https://discord.com/developers/applications) → Application của bạn
 2. **Activities** → **Settings** → **Supported Platforms** → bật **Web**
 3. **Activities** → **URL Mappings**: prefix `/`, target `domain-của-bạn` (không nhập `https://`)
-4. **OAuth2** → Redirects: thêm `https://127.0.0.1`
+4. **OAuth2** → Redirects: cấu hình theo môi trường Discord yêu cầu.
 
-Chạy local qua tunnel: `cloudflared tunnel --url http://127.0.0.1:6969 --no-autoupdate`. Đặt `VITE_ALLOWED_HOSTS` trong env.
+Production dùng Named Cloudflare Tunnel:
+
+```powershell
+cloudflared tunnel run --token <TUNNEL_TOKEN>
+```
+
+Route: `gacha.msvn.io.vn` → `http://127.0.0.1:6969`.
 
 ## Role Discord cần tạo trước
 

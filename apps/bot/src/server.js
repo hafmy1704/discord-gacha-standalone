@@ -56,7 +56,7 @@ export function createMiniappServer({
     });
     setSecurityHeaders(res);
     const url = new URL(req.url, "http://localhost");
-    const pathname = url.pathname.replace(/^\/\.proxy(?=\/api\/)/u, "");
+    const pathname = url.pathname;
     try {
       // Health check
       if (req.method === "GET" && pathname === "/health") {
@@ -180,7 +180,9 @@ export function createMiniappServer({
                 : ["activity_auth_unavailable", "activity_auth_failed"].includes(
                       msg,
                     )
-                  ? 503
+                  ? msg === "activity_auth_failed"
+                    ? 401
+                    : 503
                   : msg === "rate_limited"
                     ? 429
                     : 400;
@@ -281,8 +283,17 @@ function assertStateChangingRequest(req, allowedOrigins) {
   if (
     !allowedOrigins.has(normalizedOrigin) &&
     requestOrigin !== normalizedOrigin
-  )
+  ) {
+    console.warn("csrf origin rejected", {
+      origin: normalizedOrigin,
+      requestOrigin,
+      host: headerValue(req.headers.host),
+      forwardedHost: headerValue(req.headers["x-forwarded-host"]),
+      forwardedProto: headerValue(req.headers["x-forwarded-proto"]),
+      fetchSite: headerValue(req.headers["sec-fetch-site"]),
+    });
     throw new Error("csrf_rejected");
+  }
 }
 
 function requireJsonContentType(req) {
@@ -417,3 +428,5 @@ function setSecurityHeaders(res) {
   res.setHeader("referrer-policy", "no-referrer");
   res.setHeader("x-content-type-options", "nosniff");
 }
+
+
