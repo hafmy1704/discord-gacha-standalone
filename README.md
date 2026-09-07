@@ -51,7 +51,6 @@ create table public.players (
   cultivation_xp    bigint      not null default 0 check (cultivation_xp >= 0),
   soul_orders       bigint      not null default 0 check (soul_orders >= 0),
   vault_xp          bigint      not null default 0 check (vault_xp >= 0),
-  refinement_steel  bigint      not null default 0 check (refinement_steel >= 0),
   created_at        timestamptz not null default now(),
   primary key (guild_id, user_id)
 );
@@ -60,8 +59,7 @@ create table public.players (
 - `is_awakened`: đã thức tỉnh hay chưa.
 - `cultivation_xp`: tổng Điểm Tu Vi; cấp và điểm dư tự suy ra.
 - `soul_orders`: số Hồn Lệnh hiện có.
-- `vault_xp`: tổng Tinh Thiết tích lũy; cấp Bảo Khố tự suy ra.
-- `refinement_steel`: Tinh Thiết hiện có để tiêu; không dùng để suy ra cấp.
+- `vault_xp`: tổng Hồn Thiết tích lũy; cấp và tiến độ Bảo Khố tự suy ra.
 - `created_at`: thời điểm ghi danh đầu tiên.
 
 Cấp Bảo Khố dùng tổng chi phí lũy kế:
@@ -191,6 +189,8 @@ supabase/migrations/020_idempotent_draw_serialization.sql
 
 `018_rebuild_clean_schema.sql` chỉ giữ phần tạo schema/function/index/trigger và cấu hình RLS/quyền cần thiết; không chứa câu lệnh xóa dữ liệu. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
 
+Bộ migration trên GitHub là schema canonical sau refactor; không giữ cột legacy, trigger auto-spend hoặc migration vá riêng.
+
 Sau migration, khởi động bot để seed 120 item catalog từ `equipment_t1_t10_manifest.json`. Migration `020` serialize cùng `requestId`, nên retry sau khi mất response không tiêu hao lần hai.
 
 Hoặc dùng Supabase CLI:
@@ -285,7 +285,7 @@ newSoulOrders = oldSoulOrders + grantAmount
 
 Thức tỉnh chỉ cộng thưởng một lần. `/hon-lenh` nhận `grantAmount` nguyên trong `[1, 1.000.000]`; `sourceId` đã xử lý không cộng lần hai.
 
-### 4. Bảo Khố và Tinh Thiết
+### 4. Bảo Khố và Hồn Thiết
 
 ```text
 upgradeCost(L) = 100 × 2^(L - 1)
@@ -296,11 +296,15 @@ vaultLevel(xp) = max { L >= 1 | requiredVaultXp(L) <= xp }
 Khi phân giải hoặc thay trang bị, `salvageSteel = ageYears` của món bị phân giải. Sau mỗi lượt:
 
 ```text
-refinement_steel = refinement_steel + salvageSteel
 vault_xp = vault_xp + salvageSteel
+vaultProgressXp = vault_xp - requiredVaultXp(vaultLevel(vault_xp))
+vaultProgress = round(
+  min(1, vaultProgressXp / upgradeCost(vaultLevel(vault_xp))) × 100,
+  2
+)
 ```
 
-Auto-upgrade lặp từ cấp hiện tại; mỗi cấp `L` trừ `upgradeCost(L)` khỏi `refinement_steel` khi đủ Steel. `vault_xp` không bị trừ.
+Cấp Bảo Khố không tiêu Hồn Thiết; `vaultLevel`, `vaultProgressXp` và `vaultProgress` đều là giá trị suy ra từ `vault_xp`. Không có số dư Hồn Thiết thứ hai.
 
 ### 5. Tỉ lệ tier
 
@@ -389,7 +393,7 @@ Collection tăng `roll_count` sau mỗi lượt, kể cả món được trang b
 - Chat hợp lệ: `12–20` Điểm Tu Vi + `1` Hồn Lệnh.
 - Thức tỉnh: `10` Hồn Lệnh một lần.
 - Admin grant: `1–1.000.000` Hồn Lệnh mỗi source ID.
-- Không số dư âm; mọi thay đổi ghi vào `user_activity_log` và log cũ hơn một tháng được dọn.
+- `vault_xp` và Hồn Lệnh không âm; mọi thay đổi ghi vào `user_activity_log` và log cũ hơn một tháng được dọn.
 
 ## Acceptance criteria
 

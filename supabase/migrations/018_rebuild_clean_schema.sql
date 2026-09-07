@@ -13,7 +13,6 @@ create table if not exists public.players (
   cultivation_xp   bigint      not null default 0 check (cultivation_xp >= 0),
   soul_orders      bigint      not null default 0 check (soul_orders >= 0),
   vault_xp         bigint      not null default 0 check (vault_xp >= 0),
-  refinement_steel bigint      not null default 0 check (refinement_steel >= 0),
   created_at       timestamptz not null default now(),
   primary key (guild_id, user_id)
 );
@@ -61,7 +60,7 @@ create table if not exists public.user_activity_log (
   user_id    text        not null,
   event_type text        not null check (event_type in (
     'enroll', 'awakening', 'chat_reward', 'gacha_roll',
-    'vault_auto_upgrade', 'admin_grant'
+    'admin_grant'
   )),
   request_id text,
   payload    jsonb       not null default '{}'::jsonb,
@@ -482,7 +481,6 @@ begin
 
   return jsonb_build_object(
     'soulOrders', player_row.soul_orders,
-    'refinementSteel', player_row.refinement_steel,
     'vaultXp', player_row.vault_xp,
     'vaultLevel', public.hon_khi_vault_level(player_row.vault_xp),
     'upgradeCost', public.hon_khi_vault_cost(public.hon_khi_vault_level(player_row.vault_xp)),
@@ -738,7 +736,6 @@ begin
 
   update public.players
   set soul_orders = player_row.soul_orders - 1,
-      refinement_steel = player_row.refinement_steel + salvage_total,
       vault_xp = player_row.vault_xp + salvage_total
   where guild_id = p_guild_id and user_id = p_user_id;
 
@@ -767,7 +764,7 @@ begin
     'replacedItemCode', old_item_code,
     'salvageSteel', salvage_total,
     'soulOrdersAfter', player_after.soul_orders,
-    'refinementSteelAfter', player_after.refinement_steel,
+    'vaultXpAfter', player_after.vault_xp,
     'vaultLevelBefore', vault_level_before,
     'vaultLevelAfter', vault_level_after,
     'replayed', false
@@ -781,68 +778,6 @@ begin
   return activity_payload;
 end;
 $$;
-
-create or replace function public.auto_upgrade_hon_khi_vault()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  current_level integer;
-  target_level  integer;
-  current_steel bigint;
-  cost          bigint;
-  next_steel    bigint;
-begin
-  if pg_trigger_depth() > 1 then
-    return new;
-  end if;
-
-  current_level := public.hon_khi_vault_level(old.vault_xp);
-  target_level := public.hon_khi_vault_level(new.vault_xp);
-  current_steel := new.refinement_steel;
-
-  while current_level < target_level loop
-    cost := public.hon_khi_vault_cost(current_level);
-    exit when current_steel < cost;
-    next_steel := current_steel - cost;
-
-    update public.players
-    set refinement_steel = next_steel
-    where guild_id = new.guild_id and user_id = new.user_id;
-
-    insert into public.user_activity_log
-      (guild_id, user_id, event_type, request_id, payload)
-    values
-      (
-        new.guild_id,
-        new.user_id,
-        'vault_auto_upgrade',
-        format('vault:%s:%s:%s', new.guild_id, new.user_id, current_level + 1),
-        jsonb_build_object(
-          'fromLevel', current_level,
-          'toLevel', current_level + 1,
-          'cost', cost,
-          'refinementSteelAfter', next_steel,
-          'automatic', true
-        )
-      )
-    on conflict (guild_id, event_type, request_id)
-      where request_id is not null
-    do nothing;
-
-    current_level := current_level + 1;
-    current_steel := next_steel;
-  end loop;
-
-  return new;
-end;
-$$;
-
-create trigger players_auto_upgrade_hon_khi_vault
-after update of vault_xp, refinement_steel on public.players
-for each row execute function public.auto_upgrade_hon_khi_vault();
 
 create or replace function public.award_chat_message(
   p_guild_id       text,
@@ -1034,7 +969,6 @@ revoke execute on function
   public.get_hon_khi_session(text, text),
   public.cleanup_user_activity_log(),
   public.draw_hon_khi(text, text, text),
-  public.auto_upgrade_hon_khi_vault(),
   public.award_chat_message(text, text, text, text, integer, integer, boolean)
 from public, anon, authenticated;
 

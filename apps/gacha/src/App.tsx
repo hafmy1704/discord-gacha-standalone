@@ -35,10 +35,10 @@ type Disposition = "equipped" | "replaced" | "salvaged";
 
 type Session = {
   soulOrders: number;
-  refinementSteel: number;
   vaultXp: number;
   vaultLevel: number;
   upgradeCost: number;
+  vaultProgressXp: number;
   vaultProgress: number;
   canDraw: boolean;
   totalRolls: number;
@@ -67,6 +67,7 @@ type RollResult = {
   disposition: Disposition;
   replacedItemCode: string | null;
   salvageSteel: number;
+  vaultXpAfter: number;
   session: Session;
 };
 
@@ -335,9 +336,9 @@ const VaultRatePanel = ({ session, catalog }: { session: Session; catalog: Catal
     <section className="hk-panel hk-info-card">
       <div className="hk-info-vault">
         <div className="hk-panel-heading"><span className="hk-kicker">TÀNG BẢO CÁC</span><strong>Cấp {session.vaultLevel}</strong></div>
-        <div className="hk-vault-title"><span>Bảo Khố Hồn Khí</span><b>{formatNumber(session.refinementSteel)} <small>/ {formatNumber(session.upgradeCost)} Tinh Thiết</small></b></div>
-         <div className="hk-progress"><i style={{ width: `${session.vaultProgress}%` }} /></div>
-        <p className="hk-vault-auto-upgrade">Đủ Tinh Thiết sẽ tự động nâng cấp Bảo Khố.</p>
+        <div className="hk-vault-title"><span>Bảo Khố Hồn Khí</span><b>{formatNumber(session.vaultProgressXp)} <small>/ {formatNumber(session.upgradeCost)} Hồn Thiết</small></b></div>
+        <div className="hk-progress"><i style={{ width: `${session.vaultProgress}%` }} /></div>
+        <p className="hk-vault-auto-upgrade">Cấp Bảo Khố tự suy ra từ tổng Hồn Thiết.</p>
       </div>
       <div className="hk-info-divider" aria-hidden="true" />
       <div className="hk-info-rate">
@@ -425,7 +426,7 @@ const LatestRoll = ({ result, catalog, onClose, closable }: { result: RollResult
   const item = catalog.find((entry) => entry.itemCode === result.itemCode);
   const display = item ?? { name: result.itemCode, slotLabel: result.slot, assetKey: null };
   const dispositionLabel = result.disposition === "salvaged"
-    ? `Đã phân giải · +${formatNumber(result.salvageSteel)} Tinh Thiết`
+    ? `Đã phân giải · +${formatNumber(result.salvageSteel)} Hồn Thiết`
     : result.disposition === "replaced" ? "Đã thay thế món cũ" : "Đã tự trang bị";
   return (
     <div key={result.requestId} className={`hk-latest-roll tier-${result.tier}`}>

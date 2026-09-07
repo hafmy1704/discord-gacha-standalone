@@ -330,7 +330,7 @@ function mapHonKhiRoll(value) {
     power: Number(value.power),
     salvageSteel: Number(value.salvageSteel ?? 0),
     soulOrdersAfter: Number(value.soulOrdersAfter),
-    refinementSteelAfter: Number(value.refinementSteelAfter),
+    vaultXpAfter: Number(value.vaultXpAfter),
   };
 }
 
@@ -344,7 +344,6 @@ function mapPlayerProfile(value) {
     cultivationProgress: Number(value.cultivationProgress ?? 0),
     vaultXp: Number(value.vaultXp ?? 0),
     vaultLevel: Number(value.vaultLevel ?? 1),
-    refinementSteel: Number(value.refinementSteel ?? 0),
     equipmentPower: Number(value.equipmentPower ?? 0),
     power: Number(value.power ?? 0),
     equipmentStats: value.equipmentStats ?? {},
@@ -367,10 +366,10 @@ function mapLeaderboardEntry(value) {
 function mapHonKhiSession(value) {
   return {
     soulOrders: Number(value?.soulOrders ?? 0),
-    refinementSteel: Number(value?.refinementSteel ?? 0),
     vaultXp: Number(value?.vaultXp ?? 0),
     vaultLevel: Number(value?.vaultLevel ?? 1),
     upgradeCost: Number(value?.upgradeCost ?? 100),
+    vaultProgressXp: Number(value?.vaultProgressXp ?? 0),
     vaultProgress: Number(value?.vaultProgress ?? 0),
     canDraw: Boolean(value?.canDraw),
     totalRolls: Number(value?.totalRolls ?? 0),

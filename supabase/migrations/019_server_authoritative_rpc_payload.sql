@@ -58,7 +58,6 @@ begin
     'cultivationProgress', cultivation_progress,
     'vaultXp', player_row.vault_xp,
     'vaultLevel', public.hon_khi_vault_level(player_row.vault_xp),
-    'refinementSteel', player_row.refinement_steel,
     'equipmentPower', equipment_power,
     'power', cultivation_level * 100 + equipment_power,
     'equipmentStats', equipment_stats,
@@ -89,6 +88,7 @@ declare
   equipment_power         numeric;
   vault_level             integer;
   upgrade_cost            bigint;
+  vault_progress_xp       bigint;
   vault_progress          numeric;
 begin
   select * into player_row
@@ -101,8 +101,13 @@ begin
 
   vault_level := public.hon_khi_vault_level(player_row.vault_xp);
   upgrade_cost := public.hon_khi_vault_cost(vault_level);
+  vault_progress_xp := greatest(
+    0::bigint,
+    player_row.vault_xp
+      - (100 * (power(2::numeric, vault_level - 1) - 1))::bigint
+  );
   vault_progress := round(
-    least(1::numeric, player_row.refinement_steel::numeric / upgrade_cost) * 100,
+    least(1::numeric, vault_progress_xp::numeric / upgrade_cost) * 100,
     2
   );
 
@@ -218,10 +223,10 @@ begin
 
   return jsonb_build_object(
     'soulOrders', player_row.soul_orders,
-    'refinementSteel', player_row.refinement_steel,
     'vaultXp', player_row.vault_xp,
     'vaultLevel', vault_level,
     'upgradeCost', upgrade_cost,
+    'vaultProgressXp', vault_progress_xp,
     'vaultProgress', vault_progress,
     'canDraw', player_row.soul_orders > 0,
     'tierRates', public.hon_khi_tier_rates(vault_level),
