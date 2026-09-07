@@ -262,11 +262,12 @@ function authenticate(req, signingSecret) {
 }
 
 function assertStateChangingRequest(req, allowedOrigins) {
-  if (headerValue(req.headers["sec-fetch-site"]) === "cross-site")
-    throw new Error("csrf_rejected");
-
   const origin = headerValue(req.headers.origin);
-  if (!origin) return;
+  if (!origin) {
+    if (headerValue(req.headers["sec-fetch-site"]) === "cross-site")
+      throw new Error("csrf_rejected");
+    return;
+  }
 
   let normalizedOrigin;
   try {

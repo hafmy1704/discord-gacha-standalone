@@ -68,6 +68,7 @@ test("miniapp security boundaries", async () => {
       headers: {
         cookie: cookie.split(";")[0],
         origin: "https://evil.example",
+        "sec-fetch-site": "cross-site",
         "content-type": "text/plain",
       },
       body: JSON.stringify({ requestId: "evil-request" }),
@@ -87,6 +88,19 @@ test("miniapp security boundaries", async () => {
     });
     assert.equal(response.status, 200);
     assert.equal(drawCalls, 1);
+
+    response = await fetch(base + "/api/gacha/draw", {
+      method: "POST",
+      headers: {
+        cookie: cookie.split(";")[0],
+        origin: base,
+        "sec-fetch-site": "cross-site",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ requestId: "discord-activity-request" }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(drawCalls, 2);
 
     response = await fetch(base + "/api/gacha/session", { headers: { authorization: "Bearer malformed" } });
     assert.equal(response.status, 401);
