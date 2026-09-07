@@ -19,9 +19,7 @@ discord-gacha-standalone/
 ├── .env.example
 ├── supabase/
 │   └── migrations/
-│       ├── 018_rebuild_clean_schema.sql          # Safe bootstrap schema
-│       ├── 019_server_authoritative_rpc_payload.sql
-│       └── 020_idempotent_draw_serialization.sql
+│       └── 001_initial_schema.sql                # Canonical create-only schema
 ├── apps/
 │   ├── bot/                        # Discord bot + HTTP server
 │   │   └── src/
@@ -182,16 +180,12 @@ VITE_BACKEND_HOST=127.0.0.1
 Vào Supabase Dashboard → SQL Editor, chạy theo thứ tự:
 
 ```
-supabase/migrations/018_rebuild_clean_schema.sql
-supabase/migrations/019_server_authoritative_rpc_payload.sql
-supabase/migrations/020_idempotent_draw_serialization.sql
+supabase/migrations/001_initial_schema.sql
 ```
 
-`018_rebuild_clean_schema.sql` chỉ giữ phần tạo schema/function/index/trigger và cấu hình RLS/quyền cần thiết; không chứa câu lệnh xóa dữ liệu. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
+`001_initial_schema.sql` là schema canonical đầy đủ: chỉ tạo bảng/function/index/trigger, cấu hình RLS/quyền; không chứa câu lệnh xóa dữ liệu hay migration vá. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
 
-Bộ migration trên GitHub là schema canonical sau refactor; không giữ cột legacy, trigger auto-spend hoặc migration vá riêng.
-
-Sau migration, khởi động bot để seed 120 item catalog từ `equipment_t1_t10_manifest.json`. Migration `020` serialize cùng `requestId`, nên retry sau khi mất response không tiêu hao lần hai.
+Sau migration, khởi động bot để seed 120 item catalog từ `equipment_t1_t10_manifest.json`. RPC gacha serialize theo `requestId`, nên retry sau khi mất response không tiêu hao lần hai.
 
 Hoặc dùng Supabase CLI:
 
@@ -213,6 +207,7 @@ npm start
 ```
 
 Bot sẽ:
+
 - Bind `HOST` (mặc định `127.0.0.1`) và cổng `PORT` (mặc định 3000)
 - Phục vụ frontend tại `/` (từ `apps/gacha/dist/`)
 - Phục vụ API tại `/api/`
@@ -222,12 +217,13 @@ Bot sẽ:
 
 ## Lệnh Discord
 
-| Lệnh | Quyền | Mô tả |
-|------|-------|-------|
-| `/profile` | Mọi người | Xem Cấp Tu Vi, Hồn Lệnh và trang bị |
-| `/hon-lenh nguoi-choi so-luong` | Admin | Cộng Hồn Lệnh cho người chơi |
-| `/gacha` | Mọi người (đã thức tỉnh) | Mở Activity gacha |
-| `/whitelist` | Admin | Mở bảng bật/tắt kênh thưởng chat |
+| Lệnh                            | Quyền                    | Mô tả                               |
+| ------------------------------- | ------------------------ | ----------------------------------- |
+| `/profile`                      | Mọi người                | Xem Cấp Tu Vi, Hồn Lệnh và trang bị |
+| `/hon-lenh them nguoi-choi so-luong` | Admin                    | Cộng Hồn Lệnh cho người chơi        |
+| `/hon-lenh xoa nguoi-choi so-luong` | Admin                    | Trừ Hồn Lệnh, không cho số dư âm     |
+| `/gacha`                        | Mọi người (đã thức tỉnh) | Mở Activity gacha                   |
+| `/whitelist`                    | Admin                    | Mở bảng bật/tắt kênh thưởng chat    |
 
 ## Công thức game
 
@@ -244,19 +240,19 @@ cultivationPointsRequired = 100 × L
 cultivationProgress = round(cultivationPoints / (100 × L), 4)
 ```
 
-| Cấp | Role |
-|---:|---|
-| 1–9 | Hồn Sĩ |
-| 10–19 | Hồn Sư |
-| 20–29 | Đại Hồn Sư |
-| 30–39 | Hồn Tôn |
-| 40–49 | Hồn Tông |
-| 50–59 | Hồn Vương |
-| 60–69 | Hồn Đế |
-| 70–79 | Hồn Thánh |
-| 80–89 | Hồn Đấu La |
+|   Cấp | Role             |
+| ----: | ---------------- |
+|   1–9 | Hồn Sĩ           |
+| 10–19 | Hồn Sư           |
+| 20–29 | Đại Hồn Sư       |
+| 30–39 | Hồn Tôn          |
+| 40–49 | Hồn Tông         |
+| 50–59 | Hồn Vương        |
+| 60–69 | Hồn Đế           |
+| 70–79 | Hồn Thánh        |
+| 80–89 | Hồn Đấu La       |
 | 90–99 | Phong Hào Đấu La |
-| >=100 | Hóa Thần |
+| >=100 | Hóa Thần         |
 
 ### 2. Thưởng chat
 
@@ -321,20 +317,20 @@ P(Tt) = (1 - firstRate) × decay^(t - 2) / W, 2 <= t <= maxTier
 P(Tt) = 0, t > maxTier
 ```
 
-Mỗi `1 Hồn Lệnh` là một lượt x1. Sau khi chọn tier, item được chọn đều trong catalog của tier đó. Gacha có cooldown `1 giây`; `requestId` hợp lệ dài `8–128` ký tự (`A-Z`, `a-z`, `0-9`, `_`, `-`) và replay không tiêu hao thêm Hồn Lệnh.
+Mỗi `1 Hồn Lệnh` là một lượt x1. Sau khi chọn tier, item được chọn đều trong catalog của tier đó. Gacha có cooldown `4 giây` gồm `3 giây` animation và `1 giây` chờ giữa hai lượt; `requestId` hợp lệ dài `8–128` ký tự (`A-Z`, `a-z`, `0-9`, `_`, `-`) và replay không tiêu hao thêm Hồn Lệnh.
 
-| Tier | Tên |
-|---:|---|
-| T1 | Phàm Thiết |
-| T2 | Tinh Đồng |
-| T3 | Linh Ngọc |
-| T4 | Huyền Tinh |
-| T5 | Địa Linh |
-| T6 | Thiên Linh |
-| T7 | Thánh Khí |
-| T8 | Đế Khí |
-| T9 | Tiên Khí |
-| T10 | Thần Khí |
+| Tier | Tên        |
+| ---: | ---------- |
+|   T1 | Phàm Thiết |
+|   T2 | Tinh Đồng  |
+|   T3 | Thanh Mộc  |
+|   T4 | Xích Viêm  |
+|   T5 | Hoàng Nham |
+|   T6 | Bạch Kim   |
+|   T7 | Huyền Thủy |
+|   T8 | Tinh Đấu   |
+|   T9 | Hải Thần   |
+|  T10 | Thần Vực   |
 
 ### 6. Niên Hạn và Power
 
@@ -348,28 +344,28 @@ ageFactor = round(0.85 + 0.30 × (ageYears - ageMin) / (ageMax - ageMin), 4)
 budget = round(100 × slotBudget × 1.6^(T - 1) × ageFactor, 4)
 ```
 
-| Slot | Tên hiển thị | Nhóm stat | `slotBudget` |
-|---|---|---|---:|
-| weapon | Vũ Khí | Attack | 0.65 |
-| offhand | Phó Khí | Attack | 0.40 |
-| crown | Hồn Quan | HP | 0.25 |
-| armor | Hộ Giáp | HP | 0.65 |
-| bracer | Hộ Uyển | Attack | 0.30 |
-| belt | Hồn Đai | HP | 0.25 |
-| boots | Linh Ngoa | Accuracy | 0.35 |
-| necklace | Hồn Liên | Accuracy | 0.25 |
-| ring | Hồn Giới | Attack | 0.20 |
-| talisman | Hộ Phù | HP | 0.20 |
-| treasure | Bí Bảo | Accuracy | 0.30 |
-| seal | Hồn Ấn | Accuracy | 0.20 |
+| Slot     | Tên hiển thị | Nhóm stat | `slotBudget` |
+| -------- | ------------ | --------- | -----------: |
+| weapon   | Vũ Khí       | Attack    |         0.65 |
+| offhand  | Phó Khí      | Attack    |         0.40 |
+| crown    | Hồn Quan     | HP        |         0.25 |
+| armor    | Hộ Giáp      | HP        |         0.65 |
+| bracer   | Hộ Uyển      | Attack    |         0.30 |
+| belt     | Hồn Đai      | HP        |         0.25 |
+| boots    | Linh Ngoa    | Accuracy  |         0.35 |
+| necklace | Hồn Liên     | Accuracy  |         0.25 |
+| ring     | Hồn Giới     | Attack    |         0.20 |
+| talisman | Hộ Phù       | HP        |         0.20 |
+| treasure | Bí Bảo       | Accuracy  |         0.30 |
+| seal     | Hồn Ấn       | Accuracy  |         0.20 |
 
 Trọng số stat cơ bản:
 
-| Slot | Attack | HP | Accuracy |
-|---|---:|---:|---:|
-| weapon, offhand, bracer, ring | 0.50 | 0.25 | 0.25 |
-| crown, armor, belt, talisman | 0.25 | 0.50 | 0.25 |
-| boots, necklace, treasure, seal | 0.25 | 0.25 | 0.50 |
+| Slot                            | Attack |   HP | Accuracy |
+| ------------------------------- | -----: | ---: | -------: |
+| weapon, offhand, bracer, ring   |   0.50 | 0.25 |     0.25 |
+| crown, armor, belt, talisman    |   0.25 | 0.50 |     0.25 |
+| boots, necklace, treasure, seal |   0.25 | 0.25 |     0.50 |
 
 ```text
 attack = round(budget × attackWeight, 2)
@@ -412,7 +408,7 @@ Collection tăng `roll_count` sau mỗi lượt, kể cả món được trang b
 3. **Activities** → **URL Mappings**: prefix `/`, target `domain-của-bạn` (không nhập `https://`)
 4. **OAuth2** → Redirects: thêm `https://127.0.0.1`
 
-Chạy local qua tunnel: `cloudflared tunnel --url http://127.0.0.1:6969 --no-autoupdate`. Quick Tunnel chỉ dùng dev/test; production cần named tunnel + stable hostname. Không đưa URL tunnel cũ vào `vite.config.ts`; đặt `VITE_ALLOWED_HOSTS` trong env.
+Chạy local qua tunnel: `cloudflared tunnel --url http://127.0.0.1:6969 --no-autoupdate`. Đặt `VITE_ALLOWED_HOSTS` trong env.
 
 ## Role Discord cần tạo trước
 

@@ -51,6 +51,7 @@ export function createDatabase({
         "gacha_cooldown",
         "insufficient_soul_orders",
         "invalid_request_id",
+        "invalid_source_id",
         "not_enrolled",
         "not_awakened",
         "invalid_amount",
@@ -208,6 +209,24 @@ export function createDatabase({
         p_amount: amount,
         p_source_id: sourceId,
         p_reason: reason ?? "admin_grant",
+        p_admin_id: adminUserId ?? null,
+      });
+    },
+
+    async removeSoulOrders({
+      guildId,
+      userId,
+      amount,
+      sourceId,
+      adminUserId,
+      reason,
+    }) {
+      return rpc("remove_soul_orders", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_amount: amount,
+        p_source_id: sourceId,
+        p_reason: reason ?? "admin_remove",
         p_admin_id: adminUserId ?? null,
       });
     },

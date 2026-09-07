@@ -95,6 +95,29 @@ const client = new Client({
 
 // ── Slash command definitions ─────────────────────────────────────────────────
 
+function configureSoulOrderSubcommand(subcommand, name, description) {
+  return subcommand
+    .setName(name)
+    .setDescription(description)
+    .addUserOption((o) =>
+      o
+        .setName("nguoi-choi")
+        .setDescription("Người nhận Hồn Lệnh")
+        .setRequired(true),
+    )
+    .addIntegerOption((o) =>
+      o
+        .setName("so-luong")
+        .setDescription("Số Hồn Lệnh điều chỉnh")
+        .setMinValue(1)
+        .setMaxValue(1_000_000)
+        .setRequired(true),
+    )
+    .addStringOption((o) =>
+      o.setName("ly-do").setDescription("Lý do giao dịch").setMaxLength(200),
+    );
+}
+
 const COMMANDS = [
   new SlashCommandBuilder()
     .setName("profile")
@@ -106,24 +129,13 @@ const COMMANDS = [
     ),
   new SlashCommandBuilder()
     .setName("hon-lenh")
-    .setDescription("Cộng Hồn Lệnh cho người chơi")
+    .setDescription("Điều chỉnh Hồn Lệnh cho người chơi")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addUserOption((o) =>
-      o
-        .setName("nguoi-choi")
-        .setDescription("Người nhận Hồn Lệnh")
-        .setRequired(true),
+    .addSubcommand((subcommand) =>
+      configureSoulOrderSubcommand(subcommand, "them", "Cộng Hồn Lệnh"),
     )
-    .addIntegerOption((o) =>
-      o
-        .setName("so-luong")
-        .setDescription("Số Hồn Lệnh cần cộng")
-        .setMinValue(1)
-        .setMaxValue(1_000_000)
-        .setRequired(true),
-    )
-    .addStringOption((o) =>
-      o.setName("ly-do").setDescription("Lý do giao dịch").setMaxLength(200),
+    .addSubcommand((subcommand) =>
+      configureSoulOrderSubcommand(subcommand, "xoa", "Trừ Hồn Lệnh"),
     ),
   new SlashCommandBuilder()
     .setName("whitelist")
@@ -386,21 +398,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         return;
       }
+      const operation = interaction.options.getSubcommand(true);
+      if (!new Set(["them", "xoa"]).has(operation))
+        throw new Error("invalid_operation");
       const target = interaction.options.getUser("nguoi-choi", true);
       const amount = interaction.options.getInteger("so-luong", true);
-      const reason = interaction.options.getString("ly-do") ?? "admin_grant";
-      const result = await database.grantSoulOrders({
-        guildId: GUILD_ID,
-        userId: target.id,
-        amount,
-        sourceId: `admin_grant:${interaction.id}`,
-        adminUserId: interaction.user.id,
-        reason,
-      });
+      const reason =
+        interaction.options.getString("ly-do") ??
+        (operation === "them" ? "admin_grant" : "admin_remove");
+      const result =
+        operation === "them"
+          ? await database.grantSoulOrders({
+              guildId: GUILD_ID,
+              userId: target.id,
+              amount,
+              sourceId: `admin_grant:${interaction.id}`,
+              adminUserId: interaction.user.id,
+              reason,
+            })
+          : await database.removeSoulOrders({
+              guildId: GUILD_ID,
+              userId: target.id,
+              amount,
+              sourceId: `admin_remove:${interaction.id}`,
+              adminUserId: interaction.user.id,
+              reason,
+            });
+      const verb = operation === "them" ? "cộng" : "trừ";
       await interaction.reply({
         content: result.duplicate
           ? "Giao dịch đã được xử lý trước đó."
-          : `Đã cộng **${amount} Hồn Lệnh** cho <@${target.id}>. Số dư mới: **${result.soul_orders}**.`,
+          : `Đã ${verb} **${amount} Hồn Lệnh** ${operation === "them" ? "cho" : "của"} <@${target.id}>. Số dư mới: **${result.soul_orders}**.`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -434,6 +462,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ? "Người chơi chưa thức tỉnh."
           : msg === "invalid_amount"
             ? "Số Hồn Lệnh phải từ 1 đến 1.000.000."
+            : msg === "insufficient_soul_orders"
+              ? "Số dư Hồn Lệnh không đủ để trừ."
             : "Không thể xử lý thao tác. Thử lại sau.";
     if (interaction.replied || interaction.deferred)
       await interaction

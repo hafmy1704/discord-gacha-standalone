@@ -315,13 +315,14 @@ begin
 end;
 $$;
 
-create or replace function public.grant_soul_orders(
+create or replace function public.adjust_soul_orders(
   p_guild_id  text,
   p_user_id   text,
   p_amount    integer,
   p_source_id text,
   p_reason    text default 'admin_grant',
-  p_admin_id  text default null
+  p_admin_id  text default null,
+  p_delta     integer default 1
 )
 returns jsonb
 language plpgsql
@@ -333,8 +334,11 @@ declare
   old_event  public.user_activity_log%rowtype;
   new_orders bigint;
 begin
-  if p_amount < 1 or p_amount > 1000000 then
+  if p_amount < 1 or p_amount > 1000000 or p_delta not in (-1, 1) then
     raise exception using message = 'invalid_amount';
+  end if;
+  if p_source_id is null or length(p_source_id) < 1 or length(p_source_id) > 128 then
+    raise exception using message = 'invalid_source_id';
   end if;
 
   select * into old_event
@@ -343,6 +347,9 @@ begin
     and event_type = 'admin_grant'
     and request_id = p_source_id;
   if found then
+    if old_event.user_id <> p_user_id then
+      raise exception using message = 'invalid_source_id';
+    end if;
     return jsonb_build_object(
       'duplicate', true,
       'soul_orders', (old_event.payload ->> 'soulOrdersAfter')::bigint
@@ -357,7 +364,10 @@ begin
     raise exception using message = 'not_enrolled';
   end if;
 
-  new_orders := player_row.soul_orders + p_amount;
+  new_orders := player_row.soul_orders + (p_amount::bigint * p_delta);
+  if new_orders < 0 then
+    raise exception using message = 'insufficient_soul_orders';
+  end if;
 
   update public.players
   set soul_orders = new_orders
@@ -368,6 +378,7 @@ begin
   values
     (p_guild_id, p_user_id, 'admin_grant', p_source_id,
      jsonb_build_object(
+       'operation', case when p_delta = 1 then 'add' else 'remove' end,
        'amount', p_amount,
        'reason', p_reason,
        'adminUserId', p_admin_id,
@@ -375,6 +386,46 @@ begin
      ));
 
   return jsonb_build_object('duplicate', false, 'soul_orders', new_orders);
+end;
+$$;
+
+create or replace function public.grant_soul_orders(
+  p_guild_id  text,
+  p_user_id   text,
+  p_amount    integer,
+  p_source_id text,
+  p_reason    text default 'admin_grant',
+  p_admin_id  text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return public.adjust_soul_orders(
+    p_guild_id, p_user_id, p_amount, p_source_id, p_reason, p_admin_id, 1
+  );
+end;
+$$;
+
+create or replace function public.remove_soul_orders(
+  p_guild_id  text,
+  p_user_id   text,
+  p_amount    integer,
+  p_source_id text,
+  p_reason    text default 'admin_remove',
+  p_admin_id  text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return public.adjust_soul_orders(
+    p_guild_id, p_user_id, p_amount, p_source_id, p_reason, p_admin_id, -1
+  );
 end;
 $$;
 
@@ -393,21 +444,96 @@ as $$
   where guild_id = p_guild_id and user_id = p_user_id;
 $$;
 
+create or replace function public.get_player_profile(
+  p_guild_id text,
+  p_user_id  text
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  player_row public.players%rowtype;
+  total_rolls bigint;
+  cultivation_level integer;
+  cultivation_progress numeric;
+  equipment_power numeric;
+  equipment_stats jsonb;
+begin
+  select * into player_row
+  from public.players
+  where guild_id = p_guild_id and user_id = p_user_id;
+
+  if not found then
+    return null;
+  end if;
+
+  cultivation_level := public.cultivation_level(player_row.cultivation_xp);
+  cultivation_progress := round(
+    public.cultivation_points(player_row.cultivation_xp)::numeric
+      / (100 * cultivation_level),
+    4
+  );
+  select coalesce(sum(e.power), 0)::numeric
+  into equipment_power
+  from public.hon_khi_equipped e
+  where e.guild_id = p_guild_id and e.user_id = p_user_id;
+
+  select coalesce(jsonb_object_agg(stat.key, stat.total), '{}'::jsonb)
+  into equipment_stats
+  from (
+    select entry.key, sum((entry.value #>> '{}')::numeric) as total
+    from public.hon_khi_equipped e
+    cross join lateral jsonb_each(e.stats) entry
+    where e.guild_id = p_guild_id and e.user_id = p_user_id
+    group by entry.key
+  ) stat;
+
+  total_rolls := public.get_total_hon_khi_rolls(p_guild_id, p_user_id);
+
+  return jsonb_build_object(
+    'isAwakened', player_row.is_awakened,
+    'soulOrders', player_row.soul_orders,
+    'cultivationLevel', cultivation_level,
+    'cultivationPoints', public.cultivation_points(player_row.cultivation_xp),
+    'cultivationPointsRequired', 100 * cultivation_level,
+    'cultivationProgress', cultivation_progress,
+    'vaultXp', player_row.vault_xp,
+    'vaultLevel', public.hon_khi_vault_level(player_row.vault_xp),
+    'equipmentPower', equipment_power,
+    'power', cultivation_level * 100 + equipment_power,
+    'equipmentStats', equipment_stats,
+    'totalRolls', total_rolls
+  );
+end;
+$$;
+
 create or replace function public.get_hon_khi_session(
   p_guild_id text,
   p_user_id  text
 )
 returns jsonb
 language plpgsql
+stable
 security definer
 set search_path = public
 as $$
 declare
-  player_row      public.players%rowtype;
-  equipped_json   jsonb;
-  collection_json jsonb;
-  history_json    jsonb;
-  total_rolls     bigint;
+  player_row              public.players%rowtype;
+  equipped_json           jsonb;
+  collection_json         jsonb;
+  collection_summary_json jsonb;
+  history_json            jsonb;
+  tier_rate_previews_json jsonb;
+  total_rolls             bigint;
+  equipment_count         bigint;
+  equipment_power         numeric;
+  vault_level             integer;
+  upgrade_cost            bigint;
+  vault_progress_xp       bigint;
+  vault_progress          numeric;
 begin
   select * into player_row
   from public.players
@@ -416,6 +542,18 @@ begin
   if not found or not player_row.is_awakened then
     raise exception using message = 'not_enrolled';
   end if;
+
+  vault_level := public.hon_khi_vault_level(player_row.vault_xp);
+  upgrade_cost := public.hon_khi_vault_cost(vault_level);
+  vault_progress_xp := greatest(
+    0::bigint,
+    player_row.vault_xp
+      - (100 * (power(2::numeric, vault_level - 1) - 1))::bigint
+  );
+  vault_progress := round(
+    least(1::numeric, vault_progress_xp::numeric / upgrade_cost) * 100,
+    2
+  );
 
   select coalesce(jsonb_agg(
     jsonb_build_object(
@@ -440,6 +578,11 @@ begin
   join public.hon_khi_catalog c on c.item_code = e.item_code
   where e.guild_id = p_guild_id and e.user_id = p_user_id;
 
+  select count(*)::bigint, coalesce(sum(e.power), 0)::numeric
+  into equipment_count, equipment_power
+  from public.hon_khi_equipped e
+  where e.guild_id = p_guild_id and e.user_id = p_user_id;
+
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'itemCode', c.item_code,
@@ -459,8 +602,51 @@ begin
   join public.hon_khi_catalog c on c.item_code = u.item_code
   where u.guild_id = p_guild_id and u.user_id = p_user_id;
 
+  select jsonb_build_object(
+    'discoveredCount', (
+      select count(*)::bigint
+      from public.user_hon_khi_collection
+      where guild_id = p_guild_id and user_id = p_user_id
+    ),
+    'totalCount', (select count(*)::bigint from public.hon_khi_catalog),
+    'byTier', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'tier', tier,
+          'discoveredCount', discovered_count,
+          'totalCount', total_count
+        ) order by tier
+      )
+      from (
+        select c.tier,
+               count(*)::bigint as total_count,
+               count(u.item_code)::bigint as discovered_count
+        from public.hon_khi_catalog c
+        left join public.user_hon_khi_collection u
+          on u.guild_id = p_guild_id
+         and u.user_id = p_user_id
+         and u.item_code = c.item_code
+        group by c.tier
+      ) tier_summary
+    ), '[]'::jsonb)
+  )
+  into collection_summary_json;
+
   select public.get_total_hon_khi_rolls(p_guild_id, p_user_id)
   into total_rolls;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'level', preview.level,
+      'rates', public.hon_khi_tier_rates(preview.level)
+    ) order by preview.level
+  ), '[]'::jsonb)
+  into tier_rate_previews_json
+  from (
+    select level from generate_series(1, 15) level
+    union
+    select vault_level
+  ) preview(level);
 
   select coalesce(jsonb_agg(
     h.payload || jsonb_build_object(
@@ -482,12 +668,19 @@ begin
   return jsonb_build_object(
     'soulOrders', player_row.soul_orders,
     'vaultXp', player_row.vault_xp,
-    'vaultLevel', public.hon_khi_vault_level(player_row.vault_xp),
-    'upgradeCost', public.hon_khi_vault_cost(public.hon_khi_vault_level(player_row.vault_xp)),
-    'tierRates', public.hon_khi_tier_rates(public.hon_khi_vault_level(player_row.vault_xp)),
+    'vaultLevel', vault_level,
+    'upgradeCost', upgrade_cost,
+    'vaultProgressXp', vault_progress_xp,
+    'vaultProgress', vault_progress,
+    'canDraw', player_row.soul_orders > 0,
+    'tierRates', public.hon_khi_tier_rates(vault_level),
+    'tierRatePreviews', tier_rate_previews_json,
     'totalRolls', total_rolls,
+    'equipmentCount', equipment_count,
+    'equipmentPower', equipment_power,
     'equipped', equipped_json,
     'collection', collection_json,
+    'collectionSummary', collection_summary_json,
     'history', history_json
   );
 end;
@@ -595,7 +788,7 @@ begin
     and user_id = p_user_id
     and event_type = 'gacha_roll';
 
-  if last_roll_at is not null and clock_timestamp() < last_roll_at + interval '1 second' then
+  if last_roll_at is not null and clock_timestamp() < last_roll_at + interval '4 seconds' then
     raise exception using message = 'gacha_cooldown';
   end if;
 
@@ -776,6 +969,114 @@ begin
     (p_guild_id, p_user_id, 'gacha_roll', p_request_id, activity_payload);
 
   return activity_payload;
+end;
+$$;
+
+create or replace function public.get_hon_khi_leaderboard(
+  p_guild_id text,
+  p_user_id  text,
+  p_limit    integer default 20
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+  safe_limit integer := greatest(0, least(coalesce(p_limit, 20), 100));
+begin
+  with ranked as (
+    select
+      p.user_id,
+      public.cultivation_level(p.cultivation_xp) as cultivation_level,
+      public.hon_khi_vault_level(p.vault_xp) as vault_level,
+      round(
+        public.cultivation_level(p.cultivation_xp) * 100
+        + coalesce(sum(e.power), 0),
+        2
+      ) as power,
+      coalesce(max(e.tier), 0) as highest_tier,
+      row_number() over (
+        order by
+          round(
+            public.cultivation_level(p.cultivation_xp) * 100
+            + coalesce(sum(e.power), 0),
+            2
+          ) desc,
+          p.user_id
+      ) as rank,
+      count(*) over () as total_players
+    from public.players p
+    left join public.hon_khi_equipped e
+      on e.guild_id = p.guild_id and e.user_id = p.user_id
+    where p.guild_id = p_guild_id and p.is_awakened
+    group by p.user_id, p.cultivation_xp, p.vault_xp
+  )
+  select jsonb_build_object(
+    'entries', coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'userId', user_id,
+          'rank', rank,
+          'power', power,
+          'vaultLevel', vault_level,
+          'cultivationLevel', cultivation_level,
+          'highestTier', highest_tier,
+          'isSelf', user_id = p_user_id
+        ) order by rank
+      ) filter (where rank <= safe_limit),
+      '[]'::jsonb
+    ),
+    'self', (
+      select jsonb_build_object(
+        'userId', user_id,
+        'rank', rank,
+        'power', power,
+        'vaultLevel', vault_level,
+        'highestTier', highest_tier,
+        'isSelf', true
+      )
+      from ranked
+      where user_id = p_user_id
+    ),
+    'totalPlayers', coalesce(max(total_players), 0)
+  )
+  into result
+  from ranked;
+
+  return coalesce(
+    result,
+    jsonb_build_object('entries', '[]'::jsonb, 'self', null, 'totalPlayers', 0)
+  );
+end;
+$$;
+
+create or replace function public.draw_hon_khi_with_session(
+  p_guild_id   text,
+  p_user_id    text,
+  p_request_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+begin
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      format('%s:%s:%s', p_guild_id, p_user_id, p_request_id),
+      0
+    )
+  );
+
+  result := public.draw_hon_khi(p_guild_id, p_user_id, p_request_id);
+  return result || jsonb_build_object(
+    'session', public.get_hon_khi_session(p_guild_id, p_user_id)
+  );
 end;
 $$;
 
@@ -964,9 +1265,14 @@ revoke execute on function
   public.hon_khi_slot_label(text),
   public.ensure_guild_config(text, text[]),
   public.enroll_player(text, text, boolean),
+  public.adjust_soul_orders(text, text, integer, text, text, text, integer),
   public.grant_soul_orders(text, text, integer, text, text, text),
+  public.remove_soul_orders(text, text, integer, text, text, text),
   public.get_total_hon_khi_rolls(text, text),
+  public.get_player_profile(text, text),
   public.get_hon_khi_session(text, text),
+  public.get_hon_khi_leaderboard(text, text, integer),
+  public.draw_hon_khi_with_session(text, text, text),
   public.cleanup_user_activity_log(),
   public.draw_hon_khi(text, text, text),
   public.award_chat_message(text, text, text, text, integer, integer, boolean)
@@ -982,9 +1288,14 @@ grant execute on function
   public.hon_khi_slot_label(text),
   public.ensure_guild_config(text, text[]),
   public.enroll_player(text, text, boolean),
+  public.adjust_soul_orders(text, text, integer, text, text, text, integer),
   public.grant_soul_orders(text, text, integer, text, text, text),
+  public.remove_soul_orders(text, text, integer, text, text, text),
   public.get_total_hon_khi_rolls(text, text),
+  public.get_player_profile(text, text),
   public.get_hon_khi_session(text, text),
+  public.get_hon_khi_leaderboard(text, text, integer),
+  public.draw_hon_khi_with_session(text, text, text),
   public.cleanup_user_activity_log(),
   public.draw_hon_khi(text, text, text),
   public.award_chat_message(text, text, text, text, integer, integer, boolean)

@@ -49,14 +49,14 @@ export const HON_KHI_SLOT_LABELS = Object.freeze({
 export const HON_KHI_TIER_NAMES = Object.freeze({
   1: "Phàm Thiết",
   2: "Tinh Đồng",
-  3: "Linh Ngọc",
-  4: "Huyền Tinh",
-  5: "Địa Linh",
-  6: "Thiên Linh",
-  7: "Thánh Khí",
-  8: "Đế Khí",
-  9: "Tiên Khí",
-  10: "Thần Khí",
+  3: "Thanh Mộc",
+  4: "Xích Viêm",
+  5: "Hoàng Nham",
+  6: "Bạch Kim",
+  7: "Huyền Thủy",
+  8: "Tinh Đấu",
+  9: "Hải Thần",
+  10: "Thần Vực",
 });
 
 const DEFAULT_MANIFEST_PATH = fileURLToPath(

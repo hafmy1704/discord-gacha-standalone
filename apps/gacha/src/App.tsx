@@ -96,7 +96,7 @@ let tokenPromise: Promise<string> | null = null;
 const clientId = import.meta.env.VITE_DISCORD_APPLICATION_ID;
 const apiPrefix = "/.proxy";
 const GACHA_ANIMATION_MS = 3000;
-const AUTO_RESULT_HOLD_MS = 1000;
+const GACHA_COOLDOWN_MS = 4000;
 const SESSION_POLL_MS = 7000;
 const LEADERBOARD_POLL_MS = 9000;
 const ACTIVITY_TOKEN_ENDPOINTS = [`${apiPrefix}/api/activity/token`, "/api/activity/token"] as const;
@@ -442,7 +442,7 @@ const LatestRoll = ({ result, catalog, onClose, closable }: { result: RollResult
   );
 };
 
-const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onDraw, onAuto, onStop, onCloseLatest, busy, worldFailed, onWorldReady, onWorldError, leaderboard, leaderboardFailed }: {
+const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onDraw, onAuto, onStop, onCloseLatest, busy, worldFailed, onWorldReady, onWorldError, leaderboard, leaderboardFailed, countdown }: {
   session: Session;
   catalog: CatalogItem[];
   phase: Phase;
@@ -459,8 +459,9 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
   onWorldError: (error: unknown) => void;
   leaderboard: Leaderboard | null;
   leaderboardFailed: boolean;
+  countdown: number;
 }) => {
-  const phaseLabel = phase === "idle" ? "SẴN SÀNG TRIỆU DẪN" : phase === "result" ? "LINH KHẾ ĐÃ THÀNH" : phase === "reveal" ? "LINH KHẾ ĐANG HIỆN" : "THIÊN MÔN ĐANG KHAI ẤN";
+  const phaseLabel = countdown > 0 ? `HỒI PHỤC LINH LỰC · ${countdown}S` : phase === "idle" ? "SẴN SÀNG TRIỆU DẪN" : phase === "result" ? "LINH KHẾ ĐÃ THÀNH" : phase === "reveal" ? "LINH KHẾ ĐANG HIỆN" : "THIÊN MÔN ĐANG KHAI ẤN";
   const zoomed = phase !== "idle";
   return (
     <section className="hk-hub-page">
@@ -481,7 +482,7 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
               )}
             </div>
             <LatestRoll result={latest} catalog={catalog} onClose={onCloseLatest} closable={!autoRunning} />
-            <div className="hk-ritual-status"><span>{phaseLabel}</span><small>{phase === "idle" ? "Chờ Hồn Lệnh khai môn" : "Linh lực đang hội tụ"}</small></div>
+            <div className="hk-ritual-status" aria-live="polite"><span>{phaseLabel}</span><small>{countdown > 0 ? "Lượt kế tiếp mở sau khi đủ 4 giây" : phase === "idle" ? "Chờ Hồn Lệnh khai môn" : "Linh lực đang hội tụ"}</small></div>
             <div className="hk-floating-actions">
               <div className="hk-floating-resource"><Icon name="ticket" /><strong>{formatNumber(session.soulOrders)}</strong><span>HỒN LỆNH</span></div>
               <button className="hk-float-button hk-float-single" type="button" aria-label="Triệu Dẫn x1" disabled={busy || autoRunning || !session.canDraw} onClick={onDraw}><span>X1</span></button>
@@ -541,12 +542,14 @@ export const App = () => {
   const [worldFailed, setWorldFailed] = useState(false);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [leaderboardFailed, setLeaderboardFailed] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [compact, setCompact] = useState(false);
   const sessionRef = useRef<Session | null>(null);
   const stopRequested = useRef(false);
   const ritualZoomedRef = useRef(false);
   const worldRef = useRef<GachaWorldController | null>(null);
   const catalogRef = useRef<CatalogItem[]>([]);
+  const cooldownTimerRef = useRef<number | null>(null);
   const busyRef = useRef(false);
   const autoRunningRef = useRef(false);
   busyRef.current = busy;
@@ -614,22 +617,43 @@ export const App = () => {
     setLatest(null);
     setPhase("charging");
     const startedAt = performance.now();
+    const cooldownEndsAt = startedAt + GACHA_COOLDOWN_MS;
+    let committed = false;
+    if (cooldownTimerRef.current !== null) window.clearInterval(cooldownTimerRef.current);
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((cooldownEndsAt - performance.now()) / 1000));
+      setCountdown(remaining);
+      if (remaining === 0 && cooldownTimerRef.current !== null) {
+        window.clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
+    updateCountdown();
+    cooldownTimerRef.current = window.setInterval(updateCountdown, 100);
     const resultPromise = drawWithRetry(crypto.randomUUID());
-    await sleep(1100);
-    setPhase("omen");
-    await sleep(900);
-    setPhase("burst");
-    await sleep(450);
-    setPhase("reveal");
-    const result = await resultPromise;
-    applySession(result.session);
-    const catalogItem = catalogRef.current.find((entry) => entry.itemCode === result.itemCode);
-    worldRef.current?.setResultItem(catalogItem?.assetKey ?? null, result.tier);
-    await sleep(Math.max(0, GACHA_ANIMATION_MS - (performance.now() - startedAt)));
-    setLatest(result);
-    setPhase("result");
-    if (needsZoom) setOpening(false);
-    return result;
+    try {
+      await sleep(1100);
+      setPhase("omen");
+      await sleep(900);
+      setPhase("burst");
+      await sleep(450);
+      setPhase("reveal");
+      const result = await resultPromise;
+      committed = true;
+      applySession(result.session);
+      const catalogItem = catalogRef.current.find((entry) => entry.itemCode === result.itemCode);
+      worldRef.current?.setResultItem(catalogItem?.assetKey ?? null, result.tier);
+      await sleep(Math.max(0, GACHA_ANIMATION_MS - (performance.now() - startedAt)));
+      setLatest(result);
+      setPhase("result");
+      if (needsZoom) setOpening(false);
+      return result;
+    } finally {
+      if (committed) await sleep(Math.max(0, cooldownEndsAt - performance.now()));
+      if (cooldownTimerRef.current !== null) window.clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+      setCountdown(0);
+    }
   };
 
   const draw = async () => {
@@ -655,10 +679,7 @@ export const App = () => {
     try {
       while (!stopRequested.current && sessionRef.current?.canDraw) {
         await drawOne();
-        if (!stopRequested.current && sessionRef.current?.canDraw) {
-          await sleep(AUTO_RESULT_HOLD_MS);
-          if (!stopRequested.current) setLatest(null);
-        }
+        if (!stopRequested.current && sessionRef.current?.canDraw) setLatest(null);
       }
     } catch (reason) {
       if (!stopRequested.current) setError(readableError(reason));
@@ -716,7 +737,7 @@ export const App = () => {
     <div className={`hk-app ${autoRunning ? "is-auto" : ""} ${compact ? "is-compact" : ""} ${gachaActive ? "is-gacha" : ""}`}>
       <nav className="hk-nav-dock" aria-label="Điều hướng Hồn Khí"><NavButton view="summon" current={effectiveView} label="Triệu Dẫn" icon="spark" onClick={setView} /><NavButton view="equipment" current={effectiveView} label="Trang Bị" icon="bag" onClick={setView} /><NavButton view="catalog" current={effectiveView} label="Đồ Giám" icon="book" onClick={setView} /></nav>
       {error && <p className="hk-error" role="alert">{error}</p>}
-      <main className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
+      <main className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} countdown={countdown} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
     </div>
   );
 };
@@ -727,7 +748,7 @@ function readableError(reason: unknown) {
     return "Kênh xác thực Discord đang gián đoạn, Activity sẽ tự xin lại phiên. Nếu lỗi kéo dài hãy mở lại Activity.";
   return {
     insufficient_soul_orders: "Không còn Hồn Lệnh.",
-    gacha_cooldown: "Linh lực đang hồi phục. Chờ 1 giây.",
+    gacha_cooldown: "Linh lực đang hồi phục. Chờ đủ 4 giây.",
     not_enrolled: "Hãy bấm Thức Tỉnh trong Discord trước.",
     gacha_empty: "Catalog Hồn Khí chưa sẵn sàng.",
     activity_auth_failed: "Discord chưa cấp được phiên Activity. Đóng rồi mở lại Activity.",
