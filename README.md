@@ -246,16 +246,16 @@ cultivationProgress = round(cultivationPoints / (100 × L), 4)
 
 | Cấp | Role |
 |---:|---|
-| 1–19 | Hồn Sĩ |
-| 20–29 | Hồn Sư |
-| 30–39 | Đại Hồn Sư |
-| 40–49 | Hồn Tôn |
-| 50–59 | Hồn Tông |
-| 60–69 | Hồn Vương |
-| 70–79 | Hồn Đế |
-| 80–89 | Hồn Thánh |
-| 90 | Hồn Đấu La |
-| 91–99 | Phong Hào Đấu La |
+| 1–9 | Hồn Sĩ |
+| 10–19 | Hồn Sư |
+| 20–29 | Đại Hồn Sư |
+| 30–39 | Hồn Tôn |
+| 40–49 | Hồn Tông |
+| 50–59 | Hồn Vương |
+| 60–69 | Hồn Đế |
+| 70–79 | Hồn Thánh |
+| 80–89 | Hồn Đấu La |
+| 90–99 | Phong Hào Đấu La |
 | >=100 | Hóa Thần |
 
 ### 2. Thưởng chat

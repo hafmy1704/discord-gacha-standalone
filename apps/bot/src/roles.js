@@ -18,10 +18,8 @@ export function cultivationRoleName(level) {
   if (!Number.isInteger(level) || level < 1)
     throw new RangeError("invalid cultivation level");
   if (level >= 100) return "Hóa Thần";
-  if (level >= 91) return "Phong Hào Đấu La";
-  return CULTIVATION_ROLE_NAMES[
-    Math.min(8, Math.max(0, Math.floor(level / 10) - 1))
-  ];
+  if (level >= 90) return "Phong Hào Đấu La";
+  return CULTIVATION_ROLE_NAMES[Math.min(8, Math.floor(level / 10))];
 }
 
 export function cultivationRoleNames() {

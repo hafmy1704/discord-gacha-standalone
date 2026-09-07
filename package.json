@@ -11,7 +11,7 @@
     "gacha:dev": "npm run dev --workspace apps/gacha",
     "gacha:build": "npm run build --workspace apps/gacha",
     "gacha:typecheck": "npm run typecheck --workspace apps/gacha",
-    "gacha:test": "node --test apps/bot/src/database.test.js apps/bot/src/server.security.test.js apps/gacha/src/gachaWorldCamera.test.mjs",
+    "gacha:test": "node --test apps/bot/src/database.test.js apps/bot/src/server.security.test.js apps/bot/src/roles.test.js apps/gacha/src/gachaWorldCamera.test.mjs",
     "gacha:test:world": "node --test apps/gacha/src/gachaWorldCamera.test.mjs"
   },
   "engines": {
