@@ -19,9 +19,9 @@ discord-gacha-standalone/
 ├── .env.example
 ├── supabase/
 │   └── migrations/
-│       ├── 001_gacha_schema.sql    # Bảng nền + ledger chat
-│       ├── 002_hon_khi_gacha.sql   # Hồn Khí T1–T10 + RPC atomic
-│       └── 003–016_*.sql           # Cleanup, cooldown, auto-upgrade, schema cuối
+│       ├── 018_rebuild_clean_schema.sql          # Safe bootstrap schema
+│       ├── 019_server_authoritative_rpc_payload.sql
+│       └── 020_idempotent_draw_serialization.sql
 ├── apps/
 │   ├── bot/                        # Discord bot + HTTP server
 │   │   └── src/
