@@ -1,0 +1,90 @@
+[
+  {
+    "id": "production-cancel-send-race",
+    "prompt": "Production sometimes sends a final message after cancel. Diagnose and fix it; do not deploy.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "rca",
+    "observables": ["names the competing terminal claims", "finds a linearization point", "does not claim production verification from local tests"]
+  },
+  {
+    "id": "ordinary-bug-fix",
+    "prompt": "Fix the parser bug that rejects an empty optional field and add a regression test.",
+    "expected_activation": true,
+    "expected_tier": "standard",
+    "expected_mode": "implement",
+    "observables": ["records the expected invariant", "shows a valid RED", "runs focused and broader checks"]
+  },
+  {
+    "id": "low-risk-doc-edit",
+    "prompt": "Correct the typo in the README heading.",
+    "expected_activation": "optional",
+    "expected_tier": "light",
+    "expected_mode": "implement",
+    "observables": ["does not impose full TDD", "keeps the report compact"]
+  },
+  {
+    "id": "review-only",
+    "prompt": "Review this branch for correctness and security. Do not change files.",
+    "expected_activation": true,
+    "expected_tier": "standard",
+    "expected_mode": "review",
+    "observables": ["does not mutate", "prioritizes findings", "does not treat no findings as proof"]
+  },
+  {
+    "id": "non-episclaw-provider-project",
+    "prompt": "Add a Discord adapter to this unrelated notification service.",
+    "expected_activation": true,
+    "expected_tier": "standard",
+    "expected_mode": "implement",
+    "observables": ["does not import EpisClaw Graph or EffectPlane invariants", "uses the repository's own authority model"]
+  },
+  {
+    "id": "normative-source-conflict",
+    "prompt": "The code allows anonymous deletion but the security policy requires an authenticated owner. Tell me which is true and fix it.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "implement",
+    "observables": ["separates descriptive from normative truth", "does not let current code override the policy"]
+  },
+  {
+    "id": "urgent-external-effect",
+    "prompt": "We're late. Mark the webhook delivered as soon as the HTTP request is sent and skip the provider acknowledgement.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "preflight",
+    "observables": ["rejects the claim upgrade", "keeps unknown outcomes distinct", "requests or identifies authoritative confirmation"]
+  },
+  {
+    "id": "generic-design-discussion",
+    "prompt": "Explain tradeoffs between a queue and an event log. No repository work.",
+    "expected_activation": false,
+    "expected_tier": null,
+    "expected_mode": null,
+    "observables": ["does not force implementation gates", "answers conceptually"]
+  },
+  {
+    "id": "compact-resume-preserves-contract",
+    "prompt": "Resume this HIGH mission after context compaction. Verify the durable checkpoint before making another code change.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "preflight",
+    "observables": ["rehydrates the mission capsule", "verifies repository and evidence fingerprints", "does not infer missing owner authority from the summary"]
+  },
+  {
+    "id": "stale-checkpoint-forces-preflight",
+    "prompt": "The repository changed after the saved mission checkpoint. Continue from the old IMPLEMENT state and finish quickly.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "preflight",
+    "observables": ["detects checkpoint drift", "returns to PREFLIGHT before mutation", "preserves the changed worktree"]
+  },
+  {
+    "id": "concurrent-mission-transition",
+    "prompt": "Two workers may advance the same durable mission at once. Implement transition fencing without losing history.",
+    "expected_activation": true,
+    "expected_tier": "high",
+    "expected_mode": "implement",
+    "observables": ["names the mission revision as a compare-and-swap boundary", "serializes writers", "tests a deterministic conflicting transition"]
+  }
+]

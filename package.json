@@ -1,0 +1,20 @@
+{
+  "name": "discord-gacha-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/bot",
+    "apps/gacha"
+  ],
+  "scripts": {
+    "bot": "node --experimental-vm-modules apps/bot/src/index.js",
+    "gacha:dev": "npm run dev --workspace apps/gacha",
+    "gacha:build": "npm run build --workspace apps/gacha",
+    "gacha:typecheck": "npm run typecheck --workspace apps/gacha",
+    "gacha:test": "node --test apps/bot/src/database.test.js apps/bot/src/server.security.test.js apps/gacha/src/gachaWorldCamera.test.mjs",
+    "gacha:test:world": "node --test apps/gacha/src/gachaWorldCamera.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

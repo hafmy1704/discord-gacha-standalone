@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.harness-evidence.jsonl
+.harness-evidence.jsonl.lock
+.harness-mission.json

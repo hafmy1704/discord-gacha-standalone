@@ -1,0 +1,2318 @@
+{
+  "schemaVersion": 2,
+  "masterSize": 1920,
+  "exportSize": 400,
+  "sourceRequirement": "transparent RGBA PNG",
+  "items": [
+    {
+      "index": 1,
+      "tier": 1,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Phàm Thiết Kiếm",
+      "description": "Kiếm sắt xước, chuôi da nâu.",
+      "materials": "Sắt than mòn xước; da nâu thô; không phát sáng.",
+      "primaryStats": [
+        "ATK +8",
+        "Soul ATK +4"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t1_weapon_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "kiếm sắt xước, chuôi da nâu; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 2,
+      "tier": 1,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Mộc Thiết Thuẫn",
+      "description": "Khiên gỗ tròn, viền sắt thô.",
+      "materials": "Gỗ già; viền và tâm sắt than mòn xước; không phát sáng.",
+      "primaryStats": [
+        "ATK +3",
+        "DEF +4",
+        "Block +1%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t1_offhand_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "khiên gỗ tròn, viền sắt thô; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 3,
+      "tier": 1,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Bố Cân Hồn Quan",
+      "description": "Khăn nâu xếp lớp, khóa sắt nhỏ.",
+      "materials": "Vải nâu thô; khóa sắt xám lì; không phát sáng.",
+      "primaryStats": [
+        "HP +25",
+        "Effect RES +1%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t1_crown_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "khăn nâu, khóa sắt nhỏ; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 4,
+      "tier": 1,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Bố Thiết Hộ Giáp",
+      "description": "Áo vải nâu gia cố bằng các phiến sắt thô.",
+      "materials": "Vải đệm nâu; phiến sắt mòn xước; không phát sáng.",
+      "primaryStats": [
+        "HP +75",
+        "DEF +6"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t1_armor_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "áo vải gia cố phiến sắt; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 5,
+      "tier": 1,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Thô Thiết Hộ Uyển",
+      "description": "Cặp giáp tay sắt đen thô, cạnh mòn.",
+      "materials": "Sắt đen thô; vết trầy và cạnh mòn; không phát sáng.",
+      "primaryStats": [
+        "ATK +4",
+        "Crit +0,5%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t1_bracers_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "cặp giáp tay sắt đen; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 6,
+      "tier": 1,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Tụ Khí Yêu Đai",
+      "description": "Đai da nâu cũ, khóa đá xám.",
+      "materials": "Da nâu mòn; khóa đá xám lì; không phát sáng.",
+      "primaryStats": [
+        "HP +30",
+        "DEF +2"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t1_belt_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "đai da, khóa đá xám; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 7,
+      "tier": 1,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Khinh Hành Ngoa",
+      "description": "Cặp ủng da thấp, có lớp vải quấn thô.",
+      "materials": "Da nâu mòn; vải quấn xám nâu; không phát sáng.",
+      "primaryStats": [
+        "SPD +2",
+        "HP +20"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t1_boots_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "ủng da thấp, vải quấn; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 8,
+      "tier": 1,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Thanh Thạch Hồn Liên",
+      "description": "Dây gai thô với viên đá xanh mờ cỡ lớn.",
+      "materials": "Dây gai; đá xanh lam-lục đục; không phát sáng.",
+      "primaryStats": [
+        "Soul Power +5",
+        "Mana Regen +0,5%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t1_necklace_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "dây gai, đá xanh mờ; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 9,
+      "tier": 1,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Hắc Thiết Hồn Giới",
+      "description": "Nhẫn sắt đen, một rãnh hình học trừu tượng.",
+      "materials": "Sắt đen lì; một rãnh nông; không phát sáng.",
+      "primaryStats": [
+        "Crit +0,7%",
+        "Crit DMG +2%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t1_ring_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "nhẫn sắt đen, một rãnh rune; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 10,
+      "tier": 1,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Tụ Khí Mộc Phù",
+      "description": "Thẻ gỗ tròn, dây đỏ cũ; không có chữ.",
+      "materials": "Gỗ già; dây đỏ bạc màu; không phát sáng.",
+      "primaryStats": [
+        "SEN +5",
+        "Effect RES +0,7%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t1_talisman_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "thẻ gỗ tròn, dây đỏ cũ; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 11,
+      "tier": 1,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Tiểu Đồng Linh",
+      "description": "Chuông đồng nhỏ với quai đơn giản, không VFX.",
+      "materials": "Đồng cũ xỉn màu; patina nhẹ; không phát sáng.",
+      "primaryStats": [
+        "Element DMG +1%",
+        "Skill Haste +0,5%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t1_relic_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "chuông đồng nhỏ, không VFX; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 12,
+      "tier": 1,
+      "slot": "soulSeal",
+      "assetSlug": "soul-seal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Phàm Văn Hồn Ấn",
+      "description": "Con dấu sắt vuông với văn xoắn hình học trừu tượng.",
+      "materials": "Sắt than mòn xước; mặt dấu hình học; không phát sáng.",
+      "primaryStats": [
+        "ATK +2",
+        "HP +15",
+        "Soul Power +2"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t1_soul-seal_base.png",
+      "tierName": "Bộ Phàm Thiết",
+      "levelRange": "1–10",
+      "tierCoefficient": 1.0,
+      "promptDetail": "con dấu sắt vuông, văn xoắn; worn iron, rough leather, humble beginner gear, no glow"
+    },
+    {
+      "index": 13,
+      "tier": 2,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Tinh Đồng Nhận",
+      "description": "Đoản đao đồng đỏ, rãnh hình học cyan nhạt.",
+      "materials": "Đồng đỏ đánh bóng; rãnh cyan khảm chìm; không particle.",
+      "primaryStats": [
+        "ATK +13",
+        "Soul ATK +6"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t2_weapon_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "đoản đao đồng đỏ, rãnh rune lam; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 14,
+      "tier": 2,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Lục Giác Đồng Thuẫn",
+      "description": "Khiên đồng lục giác, tâm ngọc cyan nhạt.",
+      "materials": "Đồng đỏ đánh bóng; ngọc cyan khảm tâm; không particle.",
+      "primaryStats": [
+        "ATK +5",
+        "DEF +6",
+        "Block +1,2%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t2_offhand_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "khiên lục giác, tâm ngọc lam; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 15,
+      "tier": 2,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Tinh Đồng Phát Quan",
+      "description": "Vòng đầu đồng hẹp với ba chấu nhỏ.",
+      "materials": "Đồng đỏ đánh bóng; điểm cyan khảm chìm; không particle.",
+      "primaryStats": [
+        "HP +40",
+        "Effect RES +1,2%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t2_crown_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "vòng đầu đồng, ba chấu nhỏ; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 16,
+      "tier": 2,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Đồng Lân Giáp",
+      "description": "Giáp thân bằng các phiến vảy đồng đỏ chồng lớp.",
+      "materials": "Vảy đồng đỏ đánh bóng; khớp da đen; không particle.",
+      "primaryStats": [
+        "HP +120",
+        "DEF +10"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t2_armor_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "phiến giáp vảy đồng; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 17,
+      "tier": 2,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Xích Đồng Hộ Uyển",
+      "description": "Cặp giáp tay đồng đỏ với khớp da đen.",
+      "materials": "Đồng đỏ đánh bóng; khớp da đen; không particle.",
+      "primaryStats": [
+        "ATK +6",
+        "Crit +0,6%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t2_bracers_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "giáp tay đồng, khớp da đen; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 18,
+      "tier": 2,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Linh Văn Đồng Đai",
+      "description": "Đai đồng bản mảnh với các rãnh hình học nối tiếp.",
+      "materials": "Đồng đỏ phân đoạn; điểm cyan khảm chìm; không particle.",
+      "primaryStats": [
+        "HP +48",
+        "DEF +3"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t2_belt_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "đai đồng bản mảnh, rune nối; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 19,
+      "tier": 2,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Truy Phong Đồng Ngoa",
+      "description": "Cặp ủng đồng nhẹ với cánh nhỏ ở gót.",
+      "materials": "Đồng đỏ nhẹ; khớp da đen; điểm cyan khảm; không particle.",
+      "primaryStats": [
+        "SPD +3",
+        "HP +32"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t2_boots_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "ủng đồng nhẹ, cánh gót; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 20,
+      "tier": 2,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Lam Tinh Hồn Liên",
+      "description": "Dây đồng với tinh thể cyan cỡ lớn.",
+      "materials": "Xích đồng đỏ; tinh thể cyan nhạt; không particle.",
+      "primaryStats": [
+        "Soul Power +8",
+        "Mana Regen +0,6%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t2_necklace_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "dây đồng, tinh thể cyan; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 21,
+      "tier": 2,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Linh Đồng Hồn Giới",
+      "description": "Nhẫn đồng lục giác với rãnh cyan khảm chìm.",
+      "materials": "Đồng đỏ đánh bóng; rãnh cyan nhạt; không particle.",
+      "primaryStats": [
+        "Crit +0,8%",
+        "Crit DMG +2,4%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t2_ring_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "nhẫn đồng lục giác, rune mờ; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 22,
+      "tier": 2,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Linh Đồng Phù",
+      "description": "Đồng xu sáu cạnh với tâm ngọc cyan; không có chữ.",
+      "materials": "Đồng đỏ đánh bóng; ngọc cyan khảm tâm; không particle.",
+      "primaryStats": [
+        "SEN +8",
+        "Effect RES +0,8%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t2_talisman_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "đồng xu sáu cạnh, tâm ngọc; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 23,
+      "tier": 2,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Tụ Linh Đồng Kính",
+      "description": "Gương đồng nghi lễ nhỏ với mặt cyan nhạt.",
+      "materials": "Khung đồng đỏ; mặt gương cyan; không particle.",
+      "primaryStats": [
+        "Element DMG +1,2%",
+        "Skill Haste +0,6%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t2_relic_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "gương đồng nhỏ, mặt lam; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 24,
+      "tier": 2,
+      "slot": "soulSeal",
+      "assetSlug": "soul-seal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Tinh Đồng Hồn Ấn",
+      "description": "Con dấu đồng tròn với văn tụ khí hình học trừu tượng.",
+      "materials": "Đồng đỏ đánh bóng; hình học khảm cyan nhạt; không particle.",
+      "primaryStats": [
+        "ATK +3",
+        "HP +24",
+        "Soul Power +3"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t2_soul-seal_base.png",
+      "tierName": "Bộ Tinh Đồng",
+      "levelRange": "11–20",
+      "tierCoefficient": 1.6,
+      "promptDetail": "ấn đồng tròn, văn tụ khí; polished bronze, subtle cyan runes, early spiritual artifact"
+    },
+    {
+      "index": 25,
+      "tier": 3,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Thanh Mộc Linh Trượng",
+      "description": "Trượng cong, lõi ngọc lục.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "ATK +20",
+        "Soul ATK +10"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t3_weapon_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "trượng cong, lõi ngọc lục; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 26,
+      "tier": 3,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Bích Đằng Linh Thuẫn",
+      "description": "Khiên dây leo đan, tâm gỗ.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "ATK +8",
+        "DEF +10",
+        "Block +1,4%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t3_offhand_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "khiên dây leo đan, tâm gỗ; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 27,
+      "tier": 3,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Linh Diệp Hồn Quan",
+      "description": "Vòng lá ngọc, chồi sáng.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "HP +64",
+        "Effect RES +1,4%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t3_crown_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "vòng lá ngọc, chồi sáng; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 28,
+      "tier": 3,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Sinh Linh Mộc Giáp",
+      "description": "Giáp gỗ ghép lá.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "HP +192",
+        "DEF +15"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t3_armor_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "giáp gỗ ghép lá; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 29,
+      "tier": 3,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Thanh Đằng Hộ Uyển",
+      "description": "Dây leo bọc tay, gai ngọc.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "ATK +10",
+        "Crit +0,7%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t3_bracers_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "dây leo bọc tay, gai ngọc; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 30,
+      "tier": 3,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Cổ Mộc Hồn Đai",
+      "description": "Đai vỏ cây, khóa rễ xoắn.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "HP +77",
+        "DEF +5"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t3_belt_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "đai vỏ cây, khóa rễ xoắn; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 31,
+      "tier": 3,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Mộc Ảnh Ngoa",
+      "description": "Ủng lục sẫm, gót rễ cây.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "SPD +5",
+        "HP +51"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t3_boots_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "ủng lục sẫm, gót rễ cây; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 32,
+      "tier": 3,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Bích Tâm Hồn Liên",
+      "description": "Ngọc tim lá, dây vàng nhạt.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "Soul Power +13",
+        "Mana Regen +0,7%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t3_necklace_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "ngọc tim lá, dây vàng nhạt; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 33,
+      "tier": 3,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Niên Luân Hồn Giới",
+      "description": "Nhẫn gỗ ngọc, vân tuổi cây.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "Crit +1%",
+        "Crit DMG +2,8%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t3_ring_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "nhẫn gỗ ngọc, vân tuổi cây; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 34,
+      "tier": 3,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Bích Diệp Phù",
+      "description": "Lá ngọc lớn, gân vàng.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "SEN +13",
+        "Effect RES +1%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t3_talisman_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "lá ngọc lớn, gân vàng; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 35,
+      "tier": 3,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Sinh Mệnh Mộc Tâm",
+      "description": "Lõi gỗ nổi, chồi non xoay.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "Element DMG +1,4%",
+        "Skill Haste +0,7%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t3_relic_base.png",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "lõi gỗ nổi, chồi non xoay; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 36,
+      "tier": 3,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Thanh Mộc Hồn Ấn",
+      "description": "Ấn ngọc lục, dấu cành cây.",
+      "materials": "living jade wood, emerald leaves, soft green life energy. Năng lượng lục chỉ nằm trong gân ngọc, chồi và lõi; không VFX rời.",
+      "primaryStats": [
+        "ATK +5",
+        "HP +38",
+        "Soul Power +5"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t3_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Thanh Mộc",
+      "levelRange": "21–30",
+      "tierCoefficient": 2.56,
+      "promptDetail": "ấn ngọc lục, dấu cành cây; living jade wood, emerald leaves, soft green life energy"
+    },
+    {
+      "index": 37,
+      "tier": 4,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Xích Viêm Đao",
+      "description": "Đại đao đen đỏ, khe magma.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "ATK +33",
+        "Soul ATK +16"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t4_weapon_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "đại đao đen đỏ, khe magma; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 38,
+      "tier": 4,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Viêm Tinh Hộ Thuẫn",
+      "description": "Khiên tam giác, lõi hỏa tinh.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "ATK +12",
+        "DEF +16",
+        "Block +1,6%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t4_offhand_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "khiên tam giác, lõi hỏa tinh; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 39,
+      "tier": 4,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Hỏa Vũ Hồn Quan",
+      "description": "Vương miện lông lửa.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "HP +102",
+        "Effect RES +1,6%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t4_crown_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "vương miện lông lửa; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 40,
+      "tier": 4,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Dung Hỏa Chiến Giáp",
+      "description": "Giáp đỏ sẫm, lõi magma ngực.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "HP +307",
+        "DEF +25"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t4_armor_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "giáp đỏ sẫm, lõi magma ngực; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 41,
+      "tier": 4,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Liệt Diễm Hộ Uyển",
+      "description": "Giáp tay đen, viền lửa.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "ATK +16",
+        "Crit +0,8%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t4_bracers_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "giáp tay đen, viền lửa; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 42,
+      "tier": 4,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Dung Nham Hồn Đai",
+      "description": "Đai đá nóng, khe đỏ.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "HP +123",
+        "DEF +8"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t4_belt_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "đai đá nóng, khe đỏ; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 43,
+      "tier": 4,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Hỏa Vân Ngoa",
+      "description": "Ủng đỏ, lửa quanh gót.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "SPD +8",
+        "HP +82"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t4_boots_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "ủng đỏ, lửa quanh gót; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 44,
+      "tier": 4,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Xích Tinh Hồn Liên",
+      "description": "Tinh thể đỏ treo trên xích đen.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "Soul Power +20",
+        "Mana Regen +0,8%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t4_necklace_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "tinh thể đỏ treo trên xích đen; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 45,
+      "tier": 4,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Liệt Hỏa Hồn Giới",
+      "description": "Nhẫn đỏ, vòng lửa mảnh.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "Crit +1,2%",
+        "Crit DMG +3,3%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t4_ring_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "nhẫn đỏ, vòng lửa mảnh; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 46,
+      "tier": 4,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Liệt Dương Phù",
+      "description": "Đĩa mặt trời đỏ vàng.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "SEN +20",
+        "Effect RES +1,2%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t4_talisman_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "đĩa mặt trời đỏ vàng; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 47,
+      "tier": 4,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Viêm Tâm Bảo Châu",
+      "description": "Cầu magma trong khung móng.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "Element DMG +1,6%",
+        "Skill Haste +0,8%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t4_relic_base.png",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "cầu magma trong khung móng; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 48,
+      "tier": 4,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Xích Viêm Hồn Ấn",
+      "description": "Ấn vuông cháy, văn hỏa.",
+      "materials": "blackened metal, glowing magma cracks, controlled flame particles. Khe magma phát sáng nội tại; lửa được điêu khắc hoặc tích hợp, không particle rời.",
+      "primaryStats": [
+        "ATK +8",
+        "HP +61",
+        "Soul Power +8"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t4_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Xích Viêm",
+      "levelRange": "31–40",
+      "tierCoefficient": 4.1,
+      "promptDetail": "ấn vuông cháy, văn hỏa; blackened metal, glowing magma cracks, controlled flame particles"
+    },
+    {
+      "index": 49,
+      "tier": 5,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Địa Mạch Trọng Chùy",
+      "description": "Chùy đá vuông, lõi vàng đất.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "ATK +52",
+        "Soul ATK +26"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t5_weapon_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "chùy đá vuông, lõi vàng đất; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 50,
+      "tier": 5,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Huyền Nham Trọng Thuẫn",
+      "description": "Đại thuẫn đá đen, viền vàng.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "ATK +20",
+        "DEF +26",
+        "Block +1,9%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t5_offhand_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "đại thuẫn đá đen, viền vàng; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 51,
+      "tier": 5,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Sơn Vương Hồn Quan",
+      "description": "Miện đá ba đỉnh núi.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "HP +164",
+        "Effect RES +1,9%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t5_crown_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "miện đá ba đỉnh núi; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 52,
+      "tier": 5,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Huyền Nham Trọng Giáp",
+      "description": "Phiến đá lớn, khớp kim loại.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "HP +492",
+        "DEF +39"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t5_armor_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "phiến đá lớn, khớp kim loại; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 53,
+      "tier": 5,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Nham Tí Hộ Uyển",
+      "description": "Cặp tay đá, tinh thể vàng.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "ATK +26",
+        "Crit +1%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t5_bracers_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "cặp tay đá, tinh thể vàng; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 54,
+      "tier": 5,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Địa Mạch Hồn Đai",
+      "description": "Đai phiến đá, đường mạch sáng.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "HP +197",
+        "DEF +13"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t5_belt_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "đai phiến đá, đường mạch sáng; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 55,
+      "tier": 5,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Chấn Địa Ngoa",
+      "description": "Ủng dày, rune chấn động.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "SPD +13",
+        "HP +131"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t5_boots_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "ủng dày, rune chấn động; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 56,
+      "tier": 5,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Hoàng Tinh Hồn Liên",
+      "description": "Tinh thể vàng đất, dây đá.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "Soul Power +33",
+        "Mana Regen +1%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t5_necklace_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "tinh thể vàng đất, dây đá; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 57,
+      "tier": 5,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Sơn Hà Hồn Giới",
+      "description": "Nhẫn đá, phù điêu núi sông.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "Crit +1,4%",
+        "Crit DMG +3,9%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t5_ring_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "nhẫn đá, phù điêu núi sông; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 58,
+      "tier": 5,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Sơn Hà Phù",
+      "description": "Mảnh ngọc hình núi.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "SEN +33",
+        "Effect RES +1,4%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t5_talisman_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "mảnh ngọc hình núi; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 59,
+      "tier": 5,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Địa Tâm Trấn Thạch",
+      "description": "Khối tinh thể lơ lửng.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "Element DMG +1,9%",
+        "Skill Haste +1%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t5_relic_base.png",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "khối tinh thể lơ lửng; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 60,
+      "tier": 5,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Hoàng Nham Hồn Ấn",
+      "description": "Ấn đá nặng, văn địa mạch.",
+      "materials": "massive black stone, ochre crystal veins, mountain geometry. Khối đá đen và mạch tinh thể vàng đất; không bụi hay mảnh bay rời.",
+      "primaryStats": [
+        "ATK +13",
+        "HP +98",
+        "Soul Power +13"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t5_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Hoàng Nham",
+      "levelRange": "41–50",
+      "tierCoefficient": 6.55,
+      "promptDetail": "ấn đá nặng, văn địa mạch; massive black stone, ochre crystal veins, mountain geometry"
+    },
+    {
+      "index": 61,
+      "tier": 6,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Bạch Kim Phá Quân Thương",
+      "description": "Trường thương bạc, mũi vàng nhạt.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "ATK +84",
+        "Soul ATK +42"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t6_weapon_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "trường thương bạc, mũi vàng nhạt; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 62,
+      "tier": 6,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Kim Văn Phó Nhận",
+      "description": "Song nhận gập, rune kiếm văn.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "ATK +31",
+        "DEF +42",
+        "Block +2,3%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t6_offhand_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "song nhận gập, rune kiếm văn; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 63,
+      "tier": 6,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Bạch Kim Kiếm Quan",
+      "description": "Miện bạc dựng như lưỡi kiếm.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "HP +262",
+        "Effect RES +2,3%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t6_crown_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "miện bạc dựng như lưỡi kiếm; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 64,
+      "tier": 6,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Thiên Cương Bạch Giáp",
+      "description": "Giáp trắng bạc, khớp vàng.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "HP +786",
+        "DEF +63"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t6_armor_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "giáp trắng bạc, khớp vàng; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 65,
+      "tier": 6,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Phá Quân Hộ Uyển",
+      "description": "Giáp tay sắc cạnh, lam thép.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "ATK +42",
+        "Crit +1,1%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t6_bracers_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "giáp tay sắc cạnh, lam thép; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 66,
+      "tier": 6,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Kim Văn Chiến Đai",
+      "description": "Đai bạc, khóa kiếm hình.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "HP +315",
+        "DEF +21"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t6_belt_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "đai bạc, khóa kiếm hình; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 67,
+      "tier": 6,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Lưu Quang Kim Ngoa",
+      "description": "Ủng bạc, vệt sáng trắng.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "SPD +21",
+        "HP +210"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t6_boots_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "ủng bạc, vệt sáng trắng; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 68,
+      "tier": 6,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Canh Kim Hồn Liên",
+      "description": "Mặt dây kiếm nhỏ, xích bạc.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "Soul Power +52",
+        "Mana Regen +1,1%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t6_necklace_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "mặt dây kiếm nhỏ, xích bạc; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 69,
+      "tier": 6,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Bạch Kim Hồn Giới",
+      "description": "Nhẫn bạc, một vạch vàng.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "Crit +1,6%",
+        "Crit DMG +4,6%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t6_ring_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "nhẫn bạc, một vạch vàng; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 70,
+      "tier": 6,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Canh Kim Phù",
+      "description": "Phù kim loại hình kiếm.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "SEN +52",
+        "Effect RES +1,6%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t6_talisman_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "phù kim loại hình kiếm; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 71,
+      "tier": 6,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Vạn Kiếm Kim Luân",
+      "description": "Luân bạc nhiều mũi kiếm.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "Element DMG +2,3%",
+        "Skill Haste +1,1%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t6_relic_base.png",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "luân bạc nhiều mũi kiếm; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 72,
+      "tier": 6,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Bạch Kim Hồn Ấn",
+      "description": "Ấn bạc, văn kim tuyến.",
+      "materials": "white silver alloy, pale gold edges, precise sword motifs. Hợp kim bạc trắng, viền vàng nhạt và mô-típ kiếm tích hợp; không vệt sáng rời.",
+      "primaryStats": [
+        "ATK +21",
+        "HP +157",
+        "Soul Power +21"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t6_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Bạch Kim",
+      "levelRange": "51–60",
+      "tierCoefficient": 10.49,
+      "promptDetail": "ấn bạc, văn kim tuyến; white silver alloy, pale gold edges, precise sword motifs"
+    },
+    {
+      "index": 73,
+      "tier": 7,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Huyền Thủy Băng Kích",
+      "description": "Trường kích lam sâu, lưỡi băng.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "ATK +134",
+        "Soul ATK +67"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t7_weapon_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "trường kích lam sâu, lưỡi băng; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 74,
+      "tier": 7,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Triều Tịch Huyền Thuẫn",
+      "description": "Khiên tròn, dòng nước xoắn.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "ATK +50",
+        "DEF +67",
+        "Block +2,7%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t7_offhand_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "khiên tròn, dòng nước xoắn; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 75,
+      "tier": 7,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Băng Liên Hồn Quan",
+      "description": "Miện hoa sen băng cyan.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "HP +419",
+        "Effect RES +2,7%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t7_crown_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "miện hoa sen băng cyan; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 76,
+      "tier": 7,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Huyền Băng Lân Giáp",
+      "description": "Giáp vảy lam, cạnh pha lê.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "HP +1258",
+        "DEF +101"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t7_armor_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "giáp vảy lam, cạnh pha lê; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 77,
+      "tier": 7,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Hàn Triều Hộ Uyển",
+      "description": "Giáp tay băng, sương mỏng.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "ATK +67",
+        "Crit +1,3%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t7_bracers_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "giáp tay băng, sương mỏng; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 78,
+      "tier": 7,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Thâm Lam Hồn Đai",
+      "description": "Đai lam, khóa sóng bạc.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "HP +503",
+        "DEF +34"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t7_belt_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "đai lam, khóa sóng bạc; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 79,
+      "tier": 7,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Đạp Lãng Băng Ngoa",
+      "description": "Ủng pha lê, vòng nước gót.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "SPD +34",
+        "HP +336"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t7_boots_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "ủng pha lê, vòng nước gót; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 80,
+      "tier": 7,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Hải Phách Hồn Liên",
+      "description": "Giọt nước xanh trong khung bạc.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "Soul Power +84",
+        "Mana Regen +1,3%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t7_necklace_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "giọt nước xanh trong khung bạc; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 81,
+      "tier": 7,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Huyền Thủy Hồn Giới",
+      "description": "Nhẫn lam, mặt nước chuyển động.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "Crit +1,9%",
+        "Crit DMG +5,4%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t7_ring_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "nhẫn lam, mặt nước chuyển động; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 82,
+      "tier": 7,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Hàn Nguyệt Phù",
+      "description": "Bán nguyệt băng, viền cyan.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "SEN +84",
+        "Effect RES +1,9%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t7_talisman_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "bán nguyệt băng, viền cyan; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 83,
+      "tier": 7,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Cực Hàn Thủy Châu",
+      "description": "Thủy châu đóng băng lơ lửng.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "Element DMG +2,7%",
+        "Skill Haste +1,3%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t7_relic_base.png",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "thủy châu đóng băng lơ lửng; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 84,
+      "tier": 7,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Huyền Thủy Hồn Ấn",
+      "description": "Ấn pha lê, văn sóng xoắn.",
+      "materials": "deep blue crystal, cyan ice, flowing water ribbons, cold mist. Băng/nước là vật liệu kín hoặc cấu trúc tích hợp; không sương hay dải nước rời.",
+      "primaryStats": [
+        "ATK +34",
+        "HP +252",
+        "Soul Power +34"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t7_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Huyền Thủy",
+      "levelRange": "61–70",
+      "tierCoefficient": 16.78,
+      "promptDetail": "ấn pha lê, văn sóng xoắn; deep blue crystal, cyan ice, flowing water ribbons, cold mist"
+    },
+    {
+      "index": 85,
+      "tier": 8,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Tinh Đấu Quang Kiếm",
+      "description": "Kiếm tím trời, lõi sao trắng.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "ATK +215",
+        "Soul ATK +107"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t8_weapon_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "kiếm tím trời, lõi sao trắng; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 86,
+      "tier": 8,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Tinh Quỹ Phó Luân",
+      "description": "Luân tròn, mảnh sao quay.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "ATK +81",
+        "DEF +107",
+        "Block +3,2%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t8_offhand_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "luân tròn, mảnh sao quay; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 87,
+      "tier": 8,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Tinh Miện Hồn Quan",
+      "description": "Miện tím, năm tinh thạch.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "HP +671",
+        "Effect RES +3,2%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t8_crown_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "miện tím, năm tinh thạch; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 88,
+      "tier": 8,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Tinh Hà Huyền Giáp",
+      "description": "Giáp tím lam, bề mặt ngân hà.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "HP +2013",
+        "DEF +161"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t8_armor_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "giáp tím lam, bề mặt ngân hà; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 89,
+      "tier": 8,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Tinh Vẫn Hộ Uyển",
+      "description": "Giáp tay tinh thể, vệt sao.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "ATK +107",
+        "Crit +1,6%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t8_bracers_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "giáp tay tinh thể, vệt sao; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 90,
+      "tier": 8,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Ngân Hà Hồn Đai",
+      "description": "Đai quỹ đạo, khóa tinh cầu.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "HP +805",
+        "DEF +54"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t8_belt_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "đai quỹ đạo, khóa tinh cầu; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 91,
+      "tier": 8,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Lưu Tinh Ngoa",
+      "description": "Ủng tím, đuôi sao ở gót.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "SPD +54",
+        "HP +537"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t8_boots_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "ủng tím, đuôi sao ở gót; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 92,
+      "tier": 8,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Thiên Hà Hồn Liên",
+      "description": "Tinh cầu nhỏ trong vòng quỹ đạo.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "Soul Power +134",
+        "Mana Regen +1,6%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t8_necklace_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "tinh cầu nhỏ trong vòng quỹ đạo; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 93,
+      "tier": 8,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Tinh Quỹ Hồn Giới",
+      "description": "Nhẫn tím, hai vòng sao.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "Crit +2,2%",
+        "Crit DMG +6,4%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t8_ring_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "nhẫn tím, hai vòng sao; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 94,
+      "tier": 8,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Bắc Đẩu Phù",
+      "description": "Bảy tinh điểm nối bằng ánh sáng.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "SEN +134",
+        "Effect RES +2,2%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t8_talisman_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "bảy tinh điểm nối bằng ánh sáng; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 95,
+      "tier": 8,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Chu Thiên Tinh Bàn",
+      "description": "Thiên bàn nhiều vòng, tâm sao.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "Element DMG +3,2%",
+        "Skill Haste +1,6%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t8_relic_base.png",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "thiên bàn nhiều vòng, tâm sao; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 96,
+      "tier": 8,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Tinh Đấu Hồn Ấn",
+      "description": "Ấn pha lê tím, bản đồ sao.",
+      "materials": "celestial violet, starfield metal, orbiting crystal fragments. Vòng quỹ đạo và tinh thể phải gắn liền hoặc nằm sát cấu trúc; không particle rời.",
+      "primaryStats": [
+        "ATK +54",
+        "HP +403",
+        "Soul Power +54"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t8_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Tinh Đấu",
+      "levelRange": "71–80",
+      "tierCoefficient": 26.84,
+      "promptDetail": "ấn pha lê tím, bản đồ sao; celestial violet, starfield metal, orbiting crystal fragments"
+    },
+    {
+      "index": 97,
+      "tier": 9,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Hải Thần Tam Xoa Kích",
+      "description": "Tam xoa vàng lam, ngọc biển.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "ATK +344",
+        "Soul ATK +172"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t9_weapon_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "tam xoa vàng lam, ngọc biển; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 98,
+      "tier": 9,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Hải Uyên Thần Thuẫn",
+      "description": "Khiên vỏ sò, lõi vực sâu.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "ATK +129",
+        "DEF +172",
+        "Block +3,8%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t9_offhand_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "khiên vỏ sò, lõi vực sâu; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 99,
+      "tier": 9,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Triều Miện Hồn Quan",
+      "description": "Vương miện san hô vàng.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "HP +1074",
+        "Effect RES +3,8%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t9_crown_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "vương miện san hô vàng; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 100,
+      "tier": 9,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Thâm Hải Thần Giáp",
+      "description": "Giáp lam vàng, họa tiết sóng.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "HP +3221",
+        "DEF +258"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t9_armor_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "giáp lam vàng, họa tiết sóng; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 101,
+      "tier": 9,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Hải Long Hộ Uyển",
+      "description": "Giáp tay vảy rồng biển.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "ATK +172",
+        "Crit +1,9%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t9_bracers_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "giáp tay vảy rồng biển; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 102,
+      "tier": 9,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Thủy Triều Thần Đai",
+      "description": "Đai vàng, dòng nước xoắn.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "HP +1288",
+        "DEF +86"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t9_belt_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "đai vàng, dòng nước xoắn; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 103,
+      "tier": 9,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Triều Tịch Thần Ngoa",
+      "description": "Ủng thần kim, vòng nước gót.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "SPD +86",
+        "HP +859"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t9_boots_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "ủng thần kim, vòng nước gót; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 104,
+      "tier": 9,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Hải Tâm Hồn Liên",
+      "description": "Tim ngọc đại dương, xích vàng.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "Soul Power +215",
+        "Mana Regen +1,9%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t9_necklace_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "tim ngọc đại dương, xích vàng; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 105,
+      "tier": 9,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Thương Hải Hồn Giới",
+      "description": "Nhẫn vàng lam, sóng thu nhỏ.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "Crit +2,6%",
+        "Crit DMG +7,5%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t9_ring_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "nhẫn vàng lam, sóng thu nhỏ; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 106,
+      "tier": 9,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Hải Thần Ấn",
+      "description": "Ấn vàng hình sóng, lõi ngọc.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "SEN +215",
+        "Effect RES +2,6%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t9_talisman_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "ấn vàng hình sóng, lõi ngọc; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 107,
+      "tier": 9,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Hải Nhãn Thần Châu",
+      "description": "Thần châu xanh trong vòng san hô.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "Element DMG +3,8%",
+        "Skill Haste +1,9%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t9_relic_base.png",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "thần châu xanh trong vòng san hô; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 108,
+      "tier": 9,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Thâm Lam Hồn Ấn",
+      "description": "Con dấu lam vàng, văn thủy triều.",
+      "materials": "divine ocean gold and blue, coral ornament, tidal energy. San hô, vỏ sò, ngọc trai và phù điêu sóng tích hợp; không hào quang nước.",
+      "primaryStats": [
+        "ATK +86",
+        "HP +644",
+        "Soul Power +86"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t9_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Hải Thần",
+      "levelRange": "81–90",
+      "tierCoefficient": 42.95,
+      "promptDetail": "con dấu lam vàng, văn thủy triều; divine ocean gold and blue, coral ornament, tidal energy"
+    },
+    {
+      "index": 109,
+      "tier": 10,
+      "slot": "weapon",
+      "slotLabel": "Vũ Khí",
+      "name": "Thần Phạt Chi Nhận",
+      "description": "Thần kiếm trắng vàng, lưỡi tím.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "ATK +550",
+        "Soul ATK +275"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t10_weapon_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "thần kiếm trắng vàng, lưỡi tím; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 110,
+      "tier": 10,
+      "slot": "offhand",
+      "slotLabel": "Phó Khí",
+      "name": "Hư Không Thần Luân",
+      "description": "Luân tím vàng, khe không gian.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "ATK +206",
+        "DEF +275",
+        "Block +4,4%"
+      ],
+      "slotBudget": 0.4,
+      "filename": "t10_offhand_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "luân tím vàng, khe không gian; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 111,
+      "tier": 10,
+      "slot": "crown",
+      "slotLabel": "Hồn Quan",
+      "name": "Thiên Mệnh Thần Quan",
+      "description": "Miện trắng, halo vàng phía sau.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "HP +1718",
+        "Effect RES +4,4%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t10_crown_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "miện trắng, halo vàng phía sau; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 112,
+      "tier": 10,
+      "slot": "armor",
+      "slotLabel": "Hộ Giáp",
+      "name": "Thần Vực Thánh Giáp",
+      "description": "Giáp ngọc trắng, tinh thể tím.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "HP +5154",
+        "DEF +412"
+      ],
+      "slotBudget": 0.65,
+      "filename": "t10_armor_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "giáp ngọc trắng, tinh thể tím; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 113,
+      "tier": 10,
+      "slot": "bracers",
+      "slotLabel": "Hộ Uyển",
+      "name": "Thần Lực Hộ Uyển",
+      "description": "Giáp tay vàng trắng, rune động.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "ATK +275",
+        "Crit +2,2%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t10_bracers_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "giáp tay vàng trắng, rune động; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 114,
+      "tier": 10,
+      "slot": "belt",
+      "slotLabel": "Hồn Đai",
+      "name": "Giới Luật Thần Đai",
+      "description": "Đai hình học, khóa thần văn.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "HP +2062",
+        "DEF +137"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t10_belt_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "đai hình học, khóa thần văn; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 115,
+      "tier": 10,
+      "slot": "boots",
+      "slotLabel": "Linh Ngoa",
+      "name": "Hư Không Thần Bộ",
+      "description": "Ủng trắng tím, mảnh không gian.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "SPD +137",
+        "HP +1374"
+      ],
+      "slotBudget": 0.35,
+      "filename": "t10_boots_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "ủng trắng tím, mảnh không gian; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 116,
+      "tier": 10,
+      "slot": "necklace",
+      "slotLabel": "Hồn Liên",
+      "name": "Thần Tức Hồn Liên",
+      "description": "Tinh thể trắng trong halo vàng.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "Soul Power +344",
+        "Mana Regen +2,2%"
+      ],
+      "slotBudget": 0.25,
+      "filename": "t10_necklace_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "tinh thể trắng trong halo vàng; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 117,
+      "tier": 10,
+      "slot": "ring",
+      "slotLabel": "Hồn Giới",
+      "name": "Thần Cách Hồn Giới",
+      "description": "Nhẫn vàng tím, lõi thần tính.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "Crit +3,1%",
+        "Crit DMG +8,9%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t10_ring_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "nhẫn vàng tím, lõi thần tính; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 118,
+      "tier": 10,
+      "slot": "talisman",
+      "slotLabel": "Hộ Phù",
+      "name": "Thiên Luật Hộ Phù",
+      "description": "Phù ngọc, văn luật xoay.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "SEN +344",
+        "Effect RES +3,1%"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t10_talisman_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "phù ngọc, văn luật xoay; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 119,
+      "tier": 10,
+      "slot": "relic",
+      "slotLabel": "Bí Bảo",
+      "name": "Vạn Tượng Thần Hạch",
+      "description": "Đa diện vàng tím, halo kép.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "Element DMG +4,4%",
+        "Skill Haste +2,2%"
+      ],
+      "slotBudget": 0.3,
+      "filename": "t10_relic_base.png",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "đa diện vàng tím, halo kép; divine white jade, radiant gold, violet dimensional energy"
+    },
+    {
+      "index": 120,
+      "tier": 10,
+      "slot": "soulSeal",
+      "slotLabel": "Hồn Ấn",
+      "name": "Thần Vực Hồn Ấn",
+      "description": "Thần ấn trắng vàng, lõi tím.",
+      "materials": "divine white jade, radiant gold, violet dimensional energy. Halo được chuyển thành vòng/backplate vàng vật lý; không VFX hay mảnh không gian rời.",
+      "primaryStats": [
+        "ATK +137",
+        "HP +1031",
+        "Soul Power +137"
+      ],
+      "slotBudget": 0.2,
+      "filename": "t10_soul-seal_base.png",
+      "assetSlug": "soul-seal",
+      "tierName": "Bộ Thần Vực",
+      "levelRange": "91–99",
+      "tierCoefficient": 68.72,
+      "promptDetail": "thần ấn trắng vàng, lõi tím; divine white jade, radiant gold, violet dimensional energy"
+    }
+  ]
+}
