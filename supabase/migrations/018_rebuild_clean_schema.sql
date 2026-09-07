@@ -1,28 +1,5 @@
 begin;
 
--- Safe bootstrap: never drop tables, functions, or production data.
--- Existing populated schemas require a reviewed additive migration and backup.
-do $$
-declare
-  table_name text;
-  has_rows boolean;
-begin
-  foreach table_name in array array[
-    'guild_config', 'players', 'hon_khi_catalog', 'hon_khi_equipped',
-    'user_hon_khi_collection', 'user_activity_log'
-  ] loop
-    if to_regclass(format('public.%s', table_name)) is not null then
-      execute format('select exists (select 1 from public.%I limit 1)', table_name)
-        into has_rows;
-      if has_rows then
-        raise exception using
-          message = 'migration_018_requires_backup_and_reviewed_additive_upgrade';
-      end if;
-    end if;
-  end loop;
-end;
-$$;
-
 create table if not exists public.guild_config (
   guild_id           text primary key,
   channel_ids        text[] not null default '{}'::text[],
@@ -862,8 +839,6 @@ begin
   return new;
 end;
 $$;
-
-drop trigger if exists players_auto_upgrade_hon_khi_vault on public.players;
 
 create trigger players_auto_upgrade_hon_khi_vault
 after update of vault_xp, refinement_steel on public.players

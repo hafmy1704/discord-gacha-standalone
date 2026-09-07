@@ -189,7 +189,7 @@ supabase/migrations/019_server_authoritative_rpc_payload.sql
 supabase/migrations/020_idempotent_draw_serialization.sql
 ```
 
-`018_rebuild_clean_schema.sql` không còn `DROP ... CASCADE`. Migration tự dừng nếu phát hiện bảng đích đã có dữ liệu; production cần backup và migration additive được owner duyệt trước khi chạy. Không chạy SQL migration production trực tiếp từ bot.
+`018_rebuild_clean_schema.sql` chỉ giữ phần tạo schema/function/index/trigger và cấu hình RLS/quyền cần thiết; không chứa câu lệnh xóa dữ liệu. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
 
 Sau migration, khởi động bot để seed 120 item catalog từ `equipment_t1_t10_manifest.json`. Migration `020` serialize cùng `requestId`, nên retry sau khi mất response không tiêu hao lần hai.
 
@@ -229,16 +229,167 @@ Bot sẽ:
 | `/gacha` | Mọi người (đã thức tỉnh) | Mở Activity gacha |
 | `/whitelist` | Admin | Mở bảng bật/tắt kênh thưởng chat |
 
-## Luật kinh tế
+## Công thức game
 
-- Chat hợp lệ → **12–20 Điểm Tu Vi** + **1 Hồn Lệnh** (cooldown 60 giây, không giới hạn ngày)
-- Thức Tỉnh → nhận **10 Hồn Lệnh** lễ vật
-- Admin `/hon-lenh` → cộng tùy ý (idempotent theo interaction ID)
-- **1 Hồn Lệnh = 1 lượt Triệu Dẫn x1**
-- Niên Hạn T1 **50–100**, mỗi tier sau gấp đôi; phân giải trả đúng Niên Hạn Tinh Thiết
-- Cấp Bảo Khố 1 bắt đầu từ 100 Tinh Thiết; chi phí cấp kế tiếp tăng **×2**
-- Hồn Khí chỉ tự thay khi **Power mới lớn hơn Power hiện tại**; bằng nhau tự phân giải
-- Không số dư âm; mọi hoạt động ghi vào `user_activity_log` trong một tháng
+Server/Supabase là nguồn tính duy nhất; frontend chỉ hiển thị kết quả. Với mọi phép random, `U` là số thực đều trong `[0, 1)`.
+
+### 1. Tu vi và role
+
+Với tổng `xp = cultivation_xp`, cấp tu vi là cấp cao nhất thỏa điều kiện:
+
+```text
+L = max { L >= 1 | 50 × L × (L - 1) <= xp }
+cultivationPoints = xp - 50 × L × (L - 1)
+cultivationPointsRequired = 100 × L
+cultivationProgress = round(cultivationPoints / (100 × L), 4)
+```
+
+| Cấp | Role |
+|---:|---|
+| 1–19 | Hồn Sĩ |
+| 20–29 | Hồn Sư |
+| 30–39 | Đại Hồn Sư |
+| 40–49 | Hồn Tôn |
+| 50–59 | Hồn Tông |
+| 60–69 | Hồn Vương |
+| 70–79 | Hồn Đế |
+| 80–89 | Hồn Thánh |
+| 90 | Hồn Đấu La |
+| 91–99 | Phong Hào Đấu La |
+| >=100 | Hóa Thần |
+
+### 2. Thưởng chat
+
+Tin nhắn hợp lệ khi không rỗng, không bắt đầu bằng `!` hoặc `/`, sau chuẩn hóa còn ít nhất `8` ký tự chữ/số. Đặt:
+
+```text
+U = số ký tự chữ/số khác nhau sau chuẩn hóa
+S = số câu, tối thiểu 1
+R = 1 nếu reply người thật khác tác giả, ngược lại 0
+
+bonus = min(6, max(0, floor((U - 8) / 4)))
+       + (1 nếu S >= 2, ngược lại 0)
+       + R
+cultivationGain = min(20, 12 + bonus)
+soulOrdersGain = 1
+```
+
+Chuẩn hóa dùng NFKC, chữ thường tiếng Việt, loại URL/mention/emoji và ký tự không phải chữ, số, khoảng trắng, `.?!`. Mỗi người nhận tối đa một thưởng mỗi `60 giây`. Fingerprint trùng trong `10 phút` với khoảng cách Hamming `<= 4` bị bỏ qua. Message ID đã xử lý cũng idempotent.
+
+### 3. Thức tỉnh và admin grant
+
+```text
+awakeningBonus = 10 Hồn Lệnh
+newSoulOrders = oldSoulOrders + grantAmount
+```
+
+Thức tỉnh chỉ cộng thưởng một lần. `/hon-lenh` nhận `grantAmount` nguyên trong `[1, 1.000.000]`; `sourceId` đã xử lý không cộng lần hai.
+
+### 4. Bảo Khố và Tinh Thiết
+
+```text
+upgradeCost(L) = 100 × 2^(L - 1)
+requiredVaultXp(L) = 100 × (2^(L - 1) - 1)
+vaultLevel(xp) = max { L >= 1 | requiredVaultXp(L) <= xp }
+```
+
+Khi phân giải hoặc thay trang bị, `salvageSteel = ageYears` của món bị phân giải. Sau mỗi lượt:
+
+```text
+refinement_steel = refinement_steel + salvageSteel
+vault_xp = vault_xp + salvageSteel
+```
+
+Auto-upgrade lặp từ cấp hiện tại; mỗi cấp `L` trừ `upgradeCost(L)` khỏi `refinement_steel` khi đủ Steel. `vault_xp` không bị trừ.
+
+### 5. Tỉ lệ tier
+
+Với `V = vaultLevel`:
+
+```text
+firstRate = max(0, 0.90 - 0.10 × (V - 1))
+maxTier = min(10, max(2, V))
+decay = min(0.65, 0.20 + 0.05 × max(0, V - 3))
+W = sum(decay^k, k = 0 .. maxTier - 2)
+
+P(T1) = firstRate
+P(Tt) = (1 - firstRate) × decay^(t - 2) / W, 2 <= t <= maxTier
+P(Tt) = 0, t > maxTier
+```
+
+Mỗi `1 Hồn Lệnh` là một lượt x1. Sau khi chọn tier, item được chọn đều trong catalog của tier đó. Gacha có cooldown `1 giây`; `requestId` hợp lệ dài `8–128` ký tự (`A-Z`, `a-z`, `0-9`, `_`, `-`) và replay không tiêu hao thêm Hồn Lệnh.
+
+| Tier | Tên |
+|---:|---|
+| T1 | Phàm Thiết |
+| T2 | Tinh Đồng |
+| T3 | Linh Ngọc |
+| T4 | Huyền Tinh |
+| T5 | Địa Linh |
+| T6 | Thiên Linh |
+| T7 | Thánh Khí |
+| T8 | Đế Khí |
+| T9 | Tiên Khí |
+| T10 | Thần Khí |
+
+### 6. Niên Hạn và Power
+
+Với tier `T`:
+
+```text
+ageMin = 50 × 2^(T - 1)
+ageMax = 2 × ageMin
+ageYears = ageMin + floor(U × (ageMax - ageMin + 1))
+ageFactor = round(0.85 + 0.30 × (ageYears - ageMin) / (ageMax - ageMin), 4)
+budget = round(100 × slotBudget × 1.6^(T - 1) × ageFactor, 4)
+```
+
+| Slot | Tên hiển thị | Nhóm stat | `slotBudget` |
+|---|---|---|---:|
+| weapon | Vũ Khí | Attack | 0.65 |
+| offhand | Phó Khí | Attack | 0.40 |
+| crown | Hồn Quan | HP | 0.25 |
+| armor | Hộ Giáp | HP | 0.65 |
+| bracer | Hộ Uyển | Attack | 0.30 |
+| belt | Hồn Đai | HP | 0.25 |
+| boots | Linh Ngoa | Accuracy | 0.35 |
+| necklace | Hồn Liên | Accuracy | 0.25 |
+| ring | Hồn Giới | Attack | 0.20 |
+| talisman | Hộ Phù | HP | 0.20 |
+| treasure | Bí Bảo | Accuracy | 0.30 |
+| seal | Hồn Ấn | Accuracy | 0.20 |
+
+Trọng số stat cơ bản:
+
+| Slot | Attack | HP | Accuracy |
+|---|---:|---:|---:|
+| weapon, offhand, bracer, ring | 0.50 | 0.25 | 0.25 |
+| crown, armor, belt, talisman | 0.25 | 0.50 | 0.25 |
+| boots, necklace, treasure, seal | 0.25 | 0.25 | 0.50 |
+
+```text
+attack = round(budget × attackWeight, 2)
+hp = round(budget × hpWeight, 2)
+accuracy = round(budget × accuracyWeight, 2)
+special_i = round((1.5 + 4.5 × U_i) × T, 2), i = 1, 2
+power = round(attack + hp + accuracy + 2 × (special_1 + special_2), 2)
+```
+
+Mỗi món nhận `2` special stat khác nhau, chọn trong `basicPower`, `skillPower`, `ultimatePower`, `speed`, `critRate`, `critDamage`, `skillHaste`, `evasion`. Chỉ thay món cùng slot khi `newPower > oldPower`; ngược lại món mới phân giải và trả `ageYears` Steel. Tổng sức mạnh:
+
+```text
+equipmentPower = sum(power của các slot đang trang bị)
+combatPower = 100 × cultivationLevel + equipmentPower
+```
+
+Collection tăng `roll_count` sau mỗi lượt, kể cả món được trang bị hay phân giải. Catalog chuẩn có `10 × 12 = 120` item.
+
+### 7. Tóm tắt giới hạn
+
+- Chat hợp lệ: `12–20` Điểm Tu Vi + `1` Hồn Lệnh.
+- Thức tỉnh: `10` Hồn Lệnh một lần.
+- Admin grant: `1–1.000.000` Hồn Lệnh mỗi source ID.
+- Không số dư âm; mọi thay đổi ghi vào `user_activity_log` và log cũ hơn một tháng được dọn.
 
 ## Acceptance criteria
 
