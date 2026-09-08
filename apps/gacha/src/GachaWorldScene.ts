@@ -22,6 +22,7 @@ export type GachaWorldSceneOptions = {
   reduceMotion: boolean;
   assets: GachaWorldAssets;
   onController: (controller: GachaWorldController) => void;
+  onProgress?: (progress: number) => void;
 };
 
 const PORTAL_FRAGMENT = `
@@ -177,6 +178,10 @@ export function createGachaWorldScene(
     }
 
     preload() {
+      if (options.onProgress) {
+        this.load.on("progress", options.onProgress);
+        this.load.once("complete", () => options.onProgress!(1));
+      }
       this.load.image("world-sky", assets.sky);
       this.load.image("world-ground", assets.ground);
       this.load.image("world-altar", assets.altar);

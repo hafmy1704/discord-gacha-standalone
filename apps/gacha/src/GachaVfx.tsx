@@ -10,22 +10,25 @@ type GachaVfxProps = {
   rarity?: GachaVfxRarity;
   onReady?: (controller: GachaWorldController) => void;
   onError?: (error: unknown) => void;
+  onProgress?: (progress: number) => void;
 };
 
 // Thin React <-> Phaser bridge. All world/camera/VFX logic lives inside the
 // GachaWorldScene; this component only mounts the game, forwards the declarative
 // `phase`/`rarity` props, and hands the imperative controller back to App.
-export const GachaVfx = ({ phase, rarity, onReady, onError }: GachaVfxProps) => {
+export const GachaVfx = ({ phase, rarity, onReady, onError, onProgress }: GachaVfxProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<GachaWorldController | null>(null);
   const phaseRef = useRef(phase);
   const rarityRef = useRef(rarity);
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
+  const onProgressRef = useRef(onProgress);
   phaseRef.current = phase;
   rarityRef.current = rarity;
   onReadyRef.current = onReady;
   onErrorRef.current = onError;
+  onProgressRef.current = onProgress;
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +45,7 @@ export const GachaVfx = ({ phase, rarity, onReady, onError }: GachaVfxProps) => 
         const Scene = createGachaWorldScene(P, {
           reduceMotion,
           assets: GACHA_WORLD_ASSETS,
+          onProgress: (v) => onProgressRef.current?.(v),
           onController: (controller) => {
             if (cancelled) return;
             controllerRef.current = controller;

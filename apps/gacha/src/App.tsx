@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { GachaVfx } from "./GachaVfx";
 import { rarityForTier, type GachaWorldController } from "./gachaWorldTypes";
+import { GACHA_WORLD_ASSETS } from "./gachaWorldAssets";
 
 type Stats = Record<string, number>;
 type Phase = "idle" | "charging" | "omen" | "burst" | "reveal" | "result";
@@ -438,7 +439,7 @@ const LatestRoll = ({ result, catalog, onClose, closable }: { result: RollResult
   );
 };
 
-const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onDraw, onAuto, onStop, onCloseLatest, busy, worldFailed, onWorldReady, onWorldError, leaderboard, leaderboardFailed, countdown }: {
+const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onDraw, onAuto, onStop, onCloseLatest, busy, worldFailed, onWorldReady, onWorldError, onWorldProgress, leaderboard, leaderboardFailed, countdown }: {
   session: Session;
   catalog: CatalogItem[];
   phase: Phase;
@@ -453,6 +454,7 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
   worldFailed: boolean;
   onWorldReady: (controller: GachaWorldController) => void;
   onWorldError: (error: unknown) => void;
+  onWorldProgress: (progress: number) => void;
   leaderboard: Leaderboard | null;
   leaderboardFailed: boolean;
   countdown: number;
@@ -474,7 +476,7 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
                   <img src="/ui/generated/summoning-altar.webp" alt="" className="hk-ritual-fallback-altar" />
                 </div>
               ) : (
-                <GachaVfx phase={phase} rarity={latest ? rarityForTier(latest.tier) : undefined} onReady={onWorldReady} onError={onWorldError} />
+                <GachaVfx phase={phase} rarity={latest ? rarityForTier(latest.tier) : undefined} onReady={onWorldReady} onError={onWorldError} onProgress={onWorldProgress} />
               )}
             </div>
             <LatestRoll result={latest} catalog={catalog} onClose={onCloseLatest} closable={!autoRunning} />
@@ -540,6 +542,8 @@ export const App = () => {
   const [leaderboardFailed, setLeaderboardFailed] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [compact, setCompact] = useState(false);
+  const [worldReady, setWorldReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(3);
   const sessionRef = useRef<Session | null>(null);
   const stopRequested = useRef(false);
   const ritualZoomedRef = useRef(false);
@@ -548,6 +552,10 @@ export const App = () => {
   const cooldownTimerRef = useRef<number | null>(null);
   const busyRef = useRef(false);
   const autoRunningRef = useRef(false);
+  const apiProgressRef = useRef(0);
+  const imageLoadedRef = useRef(0);
+  const imageTotalRef = useRef(0);
+  const phaserProgressRef = useRef(0);
   busyRef.current = busy;
   autoRunningRef.current = autoRunning;
 
@@ -559,6 +567,29 @@ export const App = () => {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // Weighted progress: API 25% · images 55% · Phaser 20%
+  const updateProgress = useCallback(() => {
+    const api = apiProgressRef.current;
+    const imgs = imageTotalRef.current > 0 ? imageLoadedRef.current / imageTotalRef.current : 0;
+    const phaser = phaserProgressRef.current;
+    setLoadProgress(Math.min(100, Math.round(api * 25 + imgs * 55 + phaser * 20)));
+  }, []);
+
+  // Kick off world-asset preloads in parallel with the API. Browser caches the
+  // images so Phaser's own preload() hits memory and finishes near-instantly.
+  useEffect(() => {
+    const urls = [...new Set(Object.values(GACHA_WORLD_ASSETS))];
+    imageTotalRef.current = urls.length;
+    for (const url of urls) {
+      const img = new window.Image();
+      img.onload = img.onerror = () => {
+        imageLoadedRef.current += 1;
+        updateProgress();
+      };
+      img.src = url;
+    }
+  }, [updateProgress]);
 
   const refreshLeaderboard = () => {
     api<Leaderboard>("/api/gacha/leaderboard")
@@ -584,19 +615,25 @@ export const App = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api<Session>("/api/gacha/session"), api<CatalogItem[]>("/api/gacha/items")])
+    const sessionP = api<Session>("/api/gacha/session").then((s) => {
+      if (!cancelled) { apiProgressRef.current = 0.5; updateProgress(); }
+      return s;
+    });
+    Promise.all([sessionP, api<CatalogItem[]>("/api/gacha/items")])
       .then(([nextSession, nextCatalog]) => {
         if (cancelled) return;
+        apiProgressRef.current = 1;
         sessionRef.current = nextSession;
         setSession(nextSession);
         catalogRef.current = nextCatalog;
         setCatalog(nextCatalog);
+        updateProgress();
       })
       .catch((reason: unknown) => {
         if (!cancelled) setError(errorMessage(reason));
       });
     return () => { cancelled = true; stopRequested.current = true; };
-  }, []);
+  }, [updateProgress]);
 
   const applySession = (nextSession: Session) => {
     sessionRef.current = nextSession;
@@ -710,31 +747,65 @@ export const App = () => {
   const handleWorldReady = (controller: GachaWorldController) => {
     worldRef.current = controller;
     setWorldFailed(false);
+    phaserProgressRef.current = 1;
+    setLoadProgress(100);
+    setWorldReady(true);
   };
 
   const handleWorldError = (reason: unknown) => {
     worldRef.current = null;
     setWorldFailed(true);
+    phaserProgressRef.current = 1;
+    setLoadProgress(100);
+    setWorldReady(true);
     if (import.meta.env.DEV) console.warn("Gacha world scene failed to start", reason);
   };
+
+  const handleWorldProgress = useCallback((value: number) => {
+    phaserProgressRef.current = value;
+    updateProgress();
+  }, [updateProgress]);
 
   const latestView = useMemo(() => latest, [latest]);
   const effectiveView: View = compact ? "summon" : view;
   const gachaActive = effectiveView === "summon" && phase !== "idle";
+  const isLoading = !worldReady;
+  const stageLabel = loadProgress < 30 ? "Kết nối Bảo Khố..."
+    : loadProgress < 80 ? "Tải tài nguyên Thánh Địa..."
+    : loadProgress < 100 ? "Khởi động Linh Trận..."
+    : "Thánh Địa sẵn sàng!";
 
-  if (!session) return (
-    <main className={`hk-loading ${error ? "has-error" : ""}`} aria-live="polite">
-      <div className="hk-loading-stars" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
-      <div className="hk-loading-seal" aria-hidden="true"><span className="hk-loading-orbit" /><span className="hk-loading-orbit hk-loading-orbit-two" /><span className="hk-loading-core">魂</span></div>
-      <div className="hk-loading-copy"><span className="hk-loading-kicker">HỒN KHÍ · BẢO KHỐ</span><strong>{error ? "Kết nối gián đoạn" : "Đang thức tỉnh"}</strong><p>{error || "Đang đồng bộ linh lực với Bảo Khố..."}</p>{!error && <span className="hk-loading-progress"><i /></span>}</div>
-    </main>
-  );
   return (
-    <div className={`hk-app ${autoRunning ? "is-auto" : ""} ${compact ? "is-compact" : ""} ${gachaActive ? "is-gacha" : ""}`}>
-      <nav className="hk-nav-dock" aria-label="Điều hướng Hồn Khí"><NavButton view="summon" current={effectiveView} label="Triệu Dẫn" icon="spark" onClick={setView} /><NavButton view="equipment" current={effectiveView} label="Trang Bị" icon="bag" onClick={setView} /><NavButton view="catalog" current={effectiveView} label="Đồ Giám" icon="book" onClick={setView} /></nav>
-      {error && <p className="hk-error" role="alert">{error}</p>}
-      <main className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} countdown={countdown} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
-    </div>
+    <>
+      {session && (
+        <div
+          className={`hk-app ${autoRunning ? "is-auto" : ""} ${compact ? "is-compact" : ""} ${gachaActive ? "is-gacha" : ""}`}
+          aria-hidden={isLoading || undefined}
+          style={isLoading ? { opacity: 0, pointerEvents: "none" } : undefined}
+        >
+          <nav className="hk-nav-dock" aria-label="Điều hướng Hồn Khí"><NavButton view="summon" current={effectiveView} label="Triệu Dẫn" icon="spark" onClick={setView} /><NavButton view="equipment" current={effectiveView} label="Trang Bị" icon="bag" onClick={setView} /><NavButton view="catalog" current={effectiveView} label="Đồ Giám" icon="book" onClick={setView} /></nav>
+          {error && <p className="hk-error" role="alert">{error}</p>}
+          <main className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} onWorldProgress={handleWorldProgress} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} countdown={countdown} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
+        </div>
+      )}
+      {isLoading && (
+        <main className={`hk-loading ${error ? "has-error" : ""}`} aria-live="polite">
+          <div className="hk-loading-stars" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
+          <div className="hk-loading-seal" aria-hidden="true"><span className="hk-loading-orbit" /><span className="hk-loading-orbit hk-loading-orbit-two" /><span className="hk-loading-core">魂</span></div>
+          <div className="hk-loading-copy">
+            <span className="hk-loading-kicker">HỒN KHÍ · BẢO KHỐ</span>
+            <strong>{error ? "Kết nối gián đoạn" : "Đang thức tỉnh"}</strong>
+            <p>{error || stageLabel}</p>
+            {!error && (
+              <>
+                <span className="hk-loading-progress"><i style={{ width: `${loadProgress}%` }} /></span>
+                <span className="hk-loading-pct">{loadProgress}%</span>
+              </>
+            )}
+          </div>
+        </main>
+      )}
+    </>
   );
 };
 
