@@ -1,21 +1,40 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createMiniappServer } from "./server.js";
+import { consumeActivityRateLimit, createMiniappServer } from "./server.js";
+
+test("activity rate limiter remains bounded under new-key floods", () => {
+  const limits = new Map();
+  assert.equal(consumeActivityRateLimit(limits, "a", 1_000, 2), true);
+  assert.equal(consumeActivityRateLimit(limits, "b", 1_001, 2), true);
+  assert.equal(consumeActivityRateLimit(limits, "c", 1_002, 2), false);
+  assert.equal(limits.size, 2);
+
+  assert.equal(consumeActivityRateLimit(limits, "c", 61_001, 2), true);
+  assert.equal(limits.size, 2);
+});
 
 test("miniapp security boundaries", async () => {
   const root = await mkdtemp(join(tmpdir(), "discord-gacha-security-"));
   await writeFile(join(root, "index.html"), "ok");
+  await writeFile(join(root, "stable.json"), "{}");
+  await mkdir(join(root, "assets"));
+  await writeFile(join(root, "assets", "app-AbCd1234.js"), "export {};");
   const identities = [];
   let drawCalls = 0;
+  let drawFailure = null;
   let ready = false;
   const database = {
     async getHonKhiSession(identity) { identities.push(identity); return { ok: true }; },
     async listHonKhiItems() { return []; },
     async getHonKhiLeaderboard() { return { entries: [], self: null, totalPlayers: 0 }; },
-    async drawHonKhi() { drawCalls += 1; return {}; },
+    async drawHonKhi() {
+      drawCalls += 1;
+      if (drawFailure) throw drawFailure;
+      return {};
+    },
   };
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -36,6 +55,7 @@ test("miniapp security boundaries", async () => {
     guildId: "guild-1",
     discordClientId: "client-1",
     discordClientSecret: "secret-1",
+    allowedOrigins: ["https://activity.example"],
     isReady: () => ready,
   });
   try {
@@ -52,7 +72,19 @@ test("miniapp security boundaries", async () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        origin: "https://evil.example",
         "sec-fetch-site": "cross-site",
+      },
+      body: JSON.stringify({ code: "valid-code" }),
+    });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error, "csrf_rejected");
+
+    response = await fetch(base + "/api/activity/token", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://activity.example",
       },
       body: JSON.stringify({ code: "valid-code" }),
     });
@@ -117,6 +149,32 @@ test("miniapp security boundaries", async () => {
     assert.equal(response.status, 200);
     assert.equal(drawCalls, 2);
 
+    response = await fetch(base + "/api/gacha/draw", {
+      method: "POST",
+      headers: {
+        cookie: cookie.split(";")[0],
+        origin: base,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ requestId: "x".repeat(17_000) }),
+    });
+    assert.equal(response.status, 413);
+    assert.equal((await response.json()).error, "request_too_large");
+
+    drawFailure = new Error("database exploded");
+    response = await fetch(base + "/api/gacha/draw", {
+      method: "POST",
+      headers: {
+        cookie: cookie.split(";")[0],
+        origin: base,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ requestId: "internal-error-request" }),
+    });
+    assert.equal(response.status, 500);
+    assert.equal((await response.json()).error, "request_failed");
+    drawFailure = null;
+
     response = await fetch(base + "/api/gacha/session", { headers: { authorization: "Bearer malformed" } });
     assert.equal(response.status, 401);
     assert.equal((await response.json()).error, "invalid launch token");
@@ -124,28 +182,47 @@ test("miniapp security boundaries", async () => {
     response = await fetch(base + "/%2e%2e/package.json");
     assert.equal(response.status, 404);
 
+    response = await fetch(base + "/stable.json");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=3600, must-revalidate");
+
+    response = await fetch(base + "/assets/app-AbCd1234.js");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
+
     for (let attempt = 0; attempt < 9; attempt += 1) {
       response = await fetch(base + "/api/activity/token", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          origin: "https://activity.example",
+        },
         body: JSON.stringify({ code: "invalid-code" }),
       });
       assert.equal(response.status, 401);
     }
     response = await fetch(base + "/api/activity/token", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        origin: "https://activity.example",
+      },
       body: JSON.stringify({ code: "invalid-code" }),
     });
     assert.equal(response.status, 429);
+
+    response = await fetch(base + "/api/activity/token", {
+      method: "POST",
+      headers: {
+        "cf-connecting-ip": "203.0.113.2",
+        "content-type": "application/json",
+        origin: "https://activity.example",
+      },
+      body: JSON.stringify({ code: "invalid-code" }),
+    });
+    assert.equal(response.status, 401);
   } finally {
     globalThis.fetch = originalFetch;
     await new Promise((resolve) => server.close(resolve));
   }
 });
-
-
-
-
-
-

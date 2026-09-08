@@ -52,3 +52,51 @@ test("removing soul orders calls the idempotent admin RPC", async () => {
   });
   assert.deepEqual(result, { duplicate: false, soul_orders: 3 });
 });
+
+test("reward channel changes use one atomic database RPC", async () => {
+  const requests = [];
+  const database = createDatabase({
+    url: "https://example.supabase.co",
+    serviceRoleKey: "test-key",
+    fetchImpl: async (url, init) => {
+      const body = init.body ? JSON.parse(init.body) : null;
+      requests.push({ url, method: init.method ?? "GET", body });
+      if (!url.endsWith("/rpc/set_reward_channel")) {
+        return new Response(JSON.stringify(init.method === "PATCH" ? null : []), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      const enabled = body.p_enabled;
+      return new Response(
+        JSON.stringify({
+          changed: true,
+          channel_ids: enabled ? ["channel-1"] : [],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    },
+  });
+
+  assert.deepEqual(
+    await database.addRewardChannel({ guildId: "guild-1", channelId: "channel-1" }),
+    ["channel-1"],
+  );
+  assert.deepEqual(
+    await database.removeRewardChannel({ guildId: "guild-1", channelId: "channel-1" }),
+    { removed: true, channels: [] },
+  );
+  assert.equal(requests.length, 2);
+  for (const [index, request] of requests.entries()) {
+    assert.equal(
+      request.url,
+      "https://example.supabase.co/rest/v1/rpc/set_reward_channel",
+    );
+    assert.equal(request.method, "POST");
+    assert.deepEqual(request.body, {
+      p_guild_id: "guild-1",
+      p_channel_id: "channel-1",
+      p_enabled: index === 0,
+    });
+  }
+});

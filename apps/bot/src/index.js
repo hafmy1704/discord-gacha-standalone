@@ -22,6 +22,7 @@ import {
 } from "./roles.js";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import sharp from "sharp";
 
 // ── Environment loading ───────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   } catch (error) {
     discordReady = false;
     console.error("bot startup failed", error);
-    process.exitCode = 1;
+    await shutdown("startup failure", 1);
   }
 });
 
@@ -543,11 +544,15 @@ async function buildProfileCard({ user, profile, equipment, ranking }) {
   const role = awakened ? cultivationRoleName(level) : "Chưa thức tỉnh";
   const combatPower = profile?.power ?? 0;
   const displayName = escapeXml(
-    user.globalName ?? user.displayName ?? user.username,
+    String(user.globalName ?? user.displayName ?? user.username).slice(0, 27),
   );
-  const progress = profile?.cultivationProgress ?? 0;
+  const progress = Math.max(
+    0,
+    Math.min(1, Number(profile?.cultivationProgress ?? 0) || 0),
+  );
   const avatarResponse = await fetch(
     user.displayAvatarURL({ extension: "png", size: 256 }),
+    { signal: AbortSignal.timeout(10_000) },
   );
   if (!avatarResponse.ok)
     throw new Error(`Avatar fetch failed: ${avatarResponse.status}`);
@@ -583,7 +588,7 @@ async function buildProfileCard({ user, profile, equipment, ranking }) {
       : Math.round(statTotals[key]).toLocaleString("vi-VN"),
   );
   const statCenters = [117, 272, 430, 588, 744, 901];
-  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1536"><defs><filter id="avatarGlow"><feGaussianBlur stdDeviation="5"/></filter></defs><g font-family="Times New Roman,Georgia,serif"><circle cx="114" cy="116" r="78" fill="none" stroke="#66ead1" stroke-width="3" opacity=".6" filter="url(#avatarGlow)"/><circle cx="114" cy="116" r="76" fill="none" stroke="#d7b879" stroke-width="2"/><circle cx="114" cy="116" r="71" fill="none" stroke="#66ead1" stroke-width="2"/><path d="M114 35v12M114 185v12M33 116h12M183 116h12" stroke="#d7b879" stroke-width="3"/><path d="M59 61l8 8M161 61l-8 8M59 171l8-8M161 171l-8-8" stroke="#66ead1" stroke-width="2"/><g fill="#fff0c6"><text x="205" y="91" font-size="27" font-weight="bold">${displayName.slice(0, 27)}</text><text x="205" y="124" fill="#d7b879" font-size="17">${escapeXml(role)} - Cap ${level}</text><rect x="205" y="143" width="260" height="18" rx="9" fill="#140f0a" stroke="#b88b48"/><rect x="209" y="147" width="${Math.round(progress * 252)}" height="10" rx="5" fill="#e3bd70"/><text x="205" y="185" fill="#ead7a2" font-size="14">EXP ${points.toLocaleString("vi-VN")} / ${required.toLocaleString("vi-VN")}</text><text x="465" y="185" fill="#d7b879" text-anchor="end" font-size="14">${soulOrders.toLocaleString("vi-VN")} Hon Lenh</text></g><g fill="#fff0c6" text-anchor="middle"><text x="216" y="738" font-size="28" font-weight="bold">${escapeXml(role)}</text><text x="522" y="738" font-size="30" font-weight="bold">${Math.round(combatPower).toLocaleString("vi-VN")}</text><text x="808" y="738" font-size="24" font-weight="bold">${ranking?.rank ? `#${ranking.rank}` : "-"}</text>${statValues.map((value, index) => `<text x="${statCenters[index % 6]}" y="${index < 6 ? 990 : 1147}" font-size="24" font-weight="bold">${value}</text>`).join("")}</g></g></svg>`;
+  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1536"><defs><filter id="avatarGlow"><feGaussianBlur stdDeviation="5"/></filter></defs><g font-family="Times New Roman,Georgia,serif"><circle cx="114" cy="116" r="78" fill="none" stroke="#66ead1" stroke-width="3" opacity=".6" filter="url(#avatarGlow)"/><circle cx="114" cy="116" r="76" fill="none" stroke="#d7b879" stroke-width="2"/><circle cx="114" cy="116" r="71" fill="none" stroke="#66ead1" stroke-width="2"/><path d="M114 35v12M114 185v12M33 116h12M183 116h12" stroke="#d7b879" stroke-width="3"/><path d="M59 61l8 8M161 61l-8 8M59 171l8-8M161 171l-8-8" stroke="#66ead1" stroke-width="2"/><g fill="#fff0c6"><text x="205" y="91" font-size="27" font-weight="bold">${displayName}</text><text x="205" y="124" fill="#d7b879" font-size="17">${escapeXml(role)} - Cap ${level}</text><rect x="205" y="143" width="260" height="18" rx="9" fill="#140f0a" stroke="#b88b48"/><rect x="209" y="147" width="${Math.round(progress * 252)}" height="10" rx="5" fill="#e3bd70"/><text x="205" y="185" fill="#ead7a2" font-size="14">EXP ${points.toLocaleString("vi-VN")} / ${required.toLocaleString("vi-VN")}</text><text x="465" y="185" fill="#d7b879" text-anchor="end" font-size="14">${soulOrders.toLocaleString("vi-VN")} Hon Lenh</text></g><g fill="#fff0c6" text-anchor="middle"><text x="216" y="738" font-size="28" font-weight="bold">${escapeXml(role)}</text><text x="522" y="738" font-size="30" font-weight="bold">${Math.round(combatPower).toLocaleString("vi-VN")}</text><text x="808" y="738" font-size="24" font-weight="bold">${ranking?.rank ? `#${ranking.rank}` : "-"}</text>${statValues.map((value, index) => `<text x="${statCenters[index % 6]}" y="${index < 6 ? 990 : 1147}" font-size="24" font-weight="bold">${value}</text>`).join("")}</g></g></svg>`;
   const composites = [
     { input: avatar, top: 50, left: 48 },
     { input: Buffer.from(textSvg), top: 0, left: 0 },
@@ -593,18 +598,29 @@ async function buildProfileCard({ user, profile, equipment, ranking }) {
   const itemOffsets = [4, 0, 0, 0, 4, 5, 6, 0, -3, 0, 7, 0];
   const itemFineOffsets = [2, 3, -1, 1, 0, 3, 1, -1, -1, -1, 0, 0];
   const tierGlowColors = [
-    "#ffffff",
-    "#4ade80",
-    "#3b82f6",
-    "#a855f7",
-    "#facc15",
-    "#ef4444",
+    "#b6c5c1",
+    "#63da95",
+    "#61c8ff",
+    "#bd78ff",
+    "#ffc45e",
+    "#ffb14e",
+    "#ff8795",
+    "#ff6673",
+    "#ff5965",
+    "#ff4757",
   ];
   await Promise.all(
     (equipment ?? []).slice(0, 12).map(async (item, index) => {
       if (!item.asset?.startsWith("/hon-khi/")) return;
       try {
-        const assetPath = `${root}${item.asset.slice(1).replaceAll("/", "\\")}`;
+        const assetPath = resolve(root, item.asset.slice(1));
+        const pathFromRoot = relative(root, assetPath);
+        if (
+          pathFromRoot === ".." ||
+          pathFromRoot.startsWith(`..${sep}`) ||
+          isAbsolute(pathFromRoot)
+        )
+          return;
         const input = await sharp(readFileSync(assetPath))
           .resize(108, 108, { fit: "contain" })
           .png()
@@ -616,7 +632,12 @@ async function buildProfileCard({ user, profile, equipment, ranking }) {
           itemFineOffsets[index];
         const top = itemRows[Math.floor(index / 6)] - 54;
         const color =
-          tierGlowColors[Math.max(0, Math.min(5, Number(item.tier) - 1))];
+          tierGlowColors[
+            Math.max(
+              0,
+              Math.min(tierGlowColors.length - 1, Number(item.tier) - 1),
+            )
+          ];
         const glowSvg =
           '<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108"><defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop stop-color="' +
           color +
@@ -787,13 +808,13 @@ async function ensureAwakeningButton(guild) {
 }
 // ── Startup & shutdown ────────────────────────────────────────────────────────
 
-async function shutdown(signal) {
+async function shutdown(signal, exitCode = 0) {
   console.log(`Shutdown: ${signal}`);
   discordReady = false;
   client.destroy();
   if (miniappServer.listening)
     await new Promise((resolve) => miniappServer.close(resolve));
-  process.exit(0);
+  process.exit(exitCode);
 }
 process.once("SIGINT", () => shutdown("SIGINT"));
 process.once("SIGTERM", () => shutdown("SIGTERM"));

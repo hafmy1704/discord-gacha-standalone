@@ -66,10 +66,33 @@ const DEFAULT_MANIFEST_PATH = fileURLToPath(
 export function buildHonKhiCatalog({ manifest } = {}) {
   const source =
     manifest ?? JSON.parse(readFileSync(DEFAULT_MANIFEST_PATH, "utf8"));
-  const sourceItems = source.items ?? [];
-  const sourceByTierSlot = new Map(
-    sourceItems.map((item) => [`${item.tier}:${item.slot}`, item]),
-  );
+  const sourceItems = source.items;
+  if (!Array.isArray(sourceItems)) throw new Error("invalid_manifest_items");
+  const sourceByTierSlot = new Map();
+  const allowedSourceSlots = new Set(Object.values(SOURCE_SLOT_BY_CANONICAL));
+  for (const item of sourceItems) {
+    if (
+      !Number.isInteger(item?.tier) ||
+      item.tier < 1 ||
+      item.tier > 10 ||
+      !allowedSourceSlots.has(item?.slot)
+    )
+      throw new Error("invalid_manifest_item");
+    const key = `${item.tier}:${item.slot}`;
+    if (sourceByTierSlot.has(key))
+      throw new Error(`duplicate_manifest_item:${key}`);
+    if (
+      typeof item.name !== "string" ||
+      !item.name.trim() ||
+      item.name.length > 160 ||
+      !Number.isFinite(item.slotBudget) ||
+      item.slotBudget <= 0 ||
+      typeof item.filename !== "string" ||
+      !/^[A-Za-z0-9_-]+\.png$/u.test(item.filename)
+    )
+      throw new Error(`invalid_manifest_item:${key}`);
+    sourceByTierSlot.set(key, item);
+  }
   const catalog = [];
 
   for (let tier = 1; tier <= 10; tier += 1) {
@@ -84,6 +107,8 @@ export function buildHonKhiCatalog({ manifest } = {}) {
           /[A-Z]/gu,
           (value) => `-${value.toLowerCase()}`,
         );
+      if (!/^[a-z0-9-]+$/u.test(assetSlug))
+        throw new Error(`invalid_manifest_asset_slug:${tier}:${sourceSlot}`);
       const code = `t${tier}_${assetSlug}_base`;
       catalog.push({
         itemCode: code,

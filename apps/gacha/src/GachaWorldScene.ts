@@ -102,7 +102,9 @@ export function createGachaWorldScene(
     private targetZoom = CAMERA_IDLE_ZOOM;
     private burstKick = 0;
     private savedView: { cx: number; cy: number; zoom: number } | null = null;
-    private pendingTimers = new Set<number>();
+    private pendingTimers = new Map<number, () => void>();
+    private pendingLoaderCleanups = new Set<() => void>();
+    private cameraTransition = 0;
     private alive = true;
 
     // ---- phase / energy -------------------------------------------------
@@ -841,6 +843,7 @@ this.makeSoftImageTexture("world-dragon", "world-dragon-soft");
 
     playOpenCamera(): Promise<void> {
       if (!this.alive) return Promise.resolve();
+      this.cameraTransition += 1;
       if (!this.focused) {
         this.savedView = { cx: this.idleCenterX, cy: this.idleCenterY, zoom: this.idleZoom };
         this.focused = true;
@@ -852,11 +855,17 @@ this.makeSoftImageTexture("world-dragon", "world-dragon-soft");
 
     playCloseCamera(): Promise<void> {
       if (!this.alive) return Promise.resolve();
+      const transition = ++this.cameraTransition;
       this.focused = false;
       this.cameraPhase = nextCameraPhase(this.cameraPhase === "idle" ? "result" : this.cameraPhase, "close");
       this.recomputeCameraTargets();
       return this.wait(reduceMotion ? 0 : 780).then(() => {
-        this.cameraPhase = nextCameraPhase("closing", "reset");
+        if (
+          this.alive &&
+          transition === this.cameraTransition &&
+          !this.focused
+        )
+          this.resetToIdle();
       });
     }
 
@@ -871,16 +880,30 @@ this.makeSoftImageTexture("world-dragon", "world-dragon-soft");
         return;
       }
       const onError = (file: { key?: string }) => {
-        if (file?.key === key) this.revealResultItem("world-core");
+        if (file?.key !== key) return;
+        cleanup();
+        this.revealResultItem("world-core");
       };
-      this.load.once(`filecomplete-image-${key}`, () => this.revealResultItem(key));
-      this.load.once(P.Loader.Events.FILE_LOAD_ERROR, onError);
+      const completeEvent = `filecomplete-image-${key}`;
+      const onComplete = () => {
+        cleanup();
+        this.revealResultItem(key);
+      };
+      const cleanup = () => {
+        this.load.off(completeEvent, onComplete);
+        this.load.off(P.Loader.Events.FILE_LOAD_ERROR, onError);
+        this.pendingLoaderCleanups.delete(cleanup);
+      };
+      this.pendingLoaderCleanups.add(cleanup);
+      this.load.once(completeEvent, onComplete);
+      this.load.on(P.Loader.Events.FILE_LOAD_ERROR, onError);
       this.load.image(key, src);
       this.load.start();
     }
 
     resetToIdle() {
       if (!this.alive) return;
+      this.cameraTransition += 1;
       this.focused = false;
       this.savedView = null;
       this.cameraPhase = "idle";
@@ -911,11 +934,12 @@ this.makeSoftImageTexture("world-dragon", "world-dragon-soft");
           resolve();
           return;
         }
-        const id = window.setTimeout(() => {
+        const settle = () => {
           this.pendingTimers.delete(id);
           resolve();
-        }, duration);
-        this.pendingTimers.add(id);
+        };
+        const id = window.setTimeout(settle, duration);
+        this.pendingTimers.set(id, settle);
       });
     }
 
@@ -1456,7 +1480,13 @@ context.drawImage(source, 0, 0, canvas.width, canvas.height);
 
     private teardown() {
       this.alive = false;
-      this.pendingTimers.forEach((id) => window.clearTimeout(id));
+      this.cameraTransition += 1;
+      this.pendingLoaderCleanups.forEach((cleanup) => cleanup());
+      this.pendingLoaderCleanups.clear();
+      this.pendingTimers.forEach((settle, id) => {
+        window.clearTimeout(id);
+        settle();
+      });
       this.pendingTimers.clear();
     }
   }

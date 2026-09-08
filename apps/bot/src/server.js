@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
+import { isIP } from "node:net";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLaunchToken, verifyLaunchToken } from "./launch-token.js";
@@ -65,14 +66,13 @@ export function createMiniappServer({
       }
 
       if (pathname.startsWith("/api/") && STATE_CHANGING_METHODS.has(req.method)) {
-        if (pathname !== "/api/activity/token")
-          assertStateChangingRequest(req, configuredOrigins);
+        assertStateChangingRequest(req, configuredOrigins);
         requireJsonContentType(req);
       }
 
       // Activity OAuth token exchange (Discord → launch token)
       if (req.method === "POST" && pathname === "/api/activity/token") {
-        if (!consumeActivityRateLimit(activityRateLimits, req.socket.remoteAddress))
+        if (!consumeActivityRateLimit(activityRateLimits, activityRateLimitKey(req)))
           throw new Error("rate_limited");
         const { code } = await readJson(req);
         const userId = await exchangeActivityCode({
@@ -145,14 +145,32 @@ export function createMiniappServer({
 
       const ext = extname(filePath);
       const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
-      const isImmutable = ext !== ".html" && relativePath !== "index.html";
-      res.writeHead(200, {
-        "cache-control": isImmutable
-          ? "public, max-age=31536000, immutable"
-          : "no-store",
-        "content-type": contentType,
+      const isImmutable = isHashedBuildAsset(relativePath);
+      const stream = createReadStream(filePath);
+      stream.once("error", (error) => {
+        console.error("miniapp static file failed", {
+          requestId,
+          relativePath,
+          error: error.message,
+        });
+        if (!res.headersSent)
+          json(res, 500, { error: "request_failed" });
+        else
+          res.destroy();
       });
-      createReadStream(filePath).pipe(res);
+      stream.once("open", () => {
+        if (res.destroyed) return stream.destroy();
+        res.writeHead(200, {
+          "cache-control": isImmutable
+            ? "public, max-age=31536000, immutable"
+            : ext === ".html"
+              ? "no-store"
+              : "public, max-age=3600, must-revalidate",
+          "content-type": contentType,
+        });
+        stream.pipe(res);
+      });
+      return;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       const publicCode = publicErrorCode(msg);
@@ -163,32 +181,17 @@ export function createMiniappServer({
         error: msg,
         stack: error?.stack,
       });
-      const status =
-        msg === "invalid launch token" || msg === "expired launch token"
-          ? 401
-          : msg === "csrf_rejected" || msg === "not_enrolled" || msg === "not_awakened"
-            ? 403
-            : msg === "unsupported_media_type"
-              ? 415
-              : [
-                    "gacha_empty",
-                    "gacha_cooldown",
-                    "insufficient_soul_orders",
-                    "invalid_request_id",
-                  ].includes(msg)
-                ? 409
-                : ["activity_auth_unavailable", "activity_auth_failed"].includes(
-                      msg,
-                    )
-                  ? msg === "activity_auth_failed"
-                    ? 401
-                    : 503
-                  : msg === "rate_limited"
-                    ? 429
-                    : 400;
+      const status = errorStatus(msg);
       json(res, status, { error: publicCode });
     }
   });
+}
+
+function isHashedBuildAsset(relativePath) {
+  return (
+    relativePath.startsWith("assets/") &&
+    /-[A-Za-z0-9_-]{8,}\.[^./\\]+$/u.test(relativePath)
+  );
 }
 
 async function exchangeActivityCode({ code, clientId, clientSecret }) {
@@ -355,18 +358,50 @@ function setLaunchSessionCookie(res, token, req) {
   );
 }
 
-function consumeActivityRateLimit(store, address, now = Date.now()) {
+export function consumeActivityRateLimit(
+  store,
+  address,
+  now = Date.now(),
+  maxKeys = 10_000,
+) {
   const key = address || "unknown";
-  const current = store.get(key);
-  if (!current || current.resetAt <= now) {
+  const capacity = Math.max(1, Math.floor(maxKeys));
+  let current = store.get(key);
+  if (current?.resetAt <= now) {
+    store.delete(key);
+    current = null;
+  }
+  if (!current) {
+    while (store.size >= capacity) {
+      const oldest = store.entries().next().value;
+      if (!oldest || oldest[1].resetAt > now) return false;
+      store.delete(oldest[0]);
+    }
     store.set(key, { count: 1, resetAt: now + ACTIVITY_RATE_LIMIT_WINDOW_MS });
-    if (store.size > 10_000)
-      for (const [entryKey, entry] of store) if (entry.resetAt <= now) store.delete(entryKey);
     return true;
   }
   if (current.count >= ACTIVITY_RATE_LIMIT_MAX) return false;
   current.count += 1;
   return true;
+}
+
+function activityRateLimitKey(req) {
+  const remoteAddress = String(req.socket.remoteAddress ?? "unknown");
+  if (isLoopbackAddress(remoteAddress)) {
+    const cloudflareAddress = headerValue(
+      req.headers["cf-connecting-ip"],
+    ).trim();
+    if (isIP(cloudflareAddress)) return `cloudflare:${cloudflareAddress}`;
+  }
+  return `socket:${remoteAddress}`;
+}
+
+function isLoopbackAddress(address) {
+  return (
+    address === "::1" ||
+    address === "127.0.0.1" ||
+    address.startsWith("::ffff:127.")
+  );
 }
 
 function publicErrorCode(message) {
@@ -383,6 +418,7 @@ function publicErrorCode(message) {
     "activity_auth_failed",
     "csrf_rejected",
     "unsupported_media_type",
+    "invalid_json",
     "request_too_large",
     "rate_limited",
     "not_found",
@@ -392,13 +428,41 @@ function publicErrorCode(message) {
   return known.has(message) ? message : "request_failed";
 }
 
+function errorStatus(message) {
+  if (message === "invalid launch token" || message === "expired launch token")
+    return 401;
+  if (["csrf_rejected", "not_enrolled", "not_awakened"].includes(message))
+    return 403;
+  if (message === "unsupported_media_type") return 415;
+  if (message === "request_too_large") return 413;
+  if (
+    [
+      "gacha_empty",
+      "gacha_cooldown",
+      "insufficient_soul_orders",
+      "invalid_request_id",
+    ].includes(message)
+  )
+    return 409;
+  if (message === "activity_auth_failed") return 401;
+  if (message === "activity_auth_unavailable") return 503;
+  if (message === "rate_limited") return 429;
+  if (message === "invalid_json" || message === "invalid_path") return 400;
+  return 500;
+}
+
 async function readJson(req) {
   let body = "";
   for await (const chunk of req) {
     body += chunk;
     if (Buffer.byteLength(body, "utf8") > 16_384) throw new Error("request_too_large");
   }
-  return body ? JSON.parse(body) : {};
+  if (!body) return {};
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error("invalid_json");
+  }
 }
 
 function json(res, status, value) {

@@ -3,6 +3,10 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 import { GachaVfx } from "./GachaVfx";
 import { rarityForTier, type GachaWorldController } from "./gachaWorldTypes";
 import { GACHA_WORLD_ASSETS } from "./gachaWorldAssets";
+import {
+  GACHA_ANIMATION_MS,
+  gachaCycleDeadline,
+} from "./gachaTiming.mjs";
 
 type Stats = Record<string, number>;
 type Phase = "idle" | "charging" | "omen" | "burst" | "reveal" | "result";
@@ -97,8 +101,8 @@ let tokenPromise: Promise<string> | null = null;
 const clientId = import.meta.env.VITE_DISCORD_APPLICATION_ID;
 const apiPrefix = "";
 const activityTokenPath = "/api/activity/token";
-const GACHA_ANIMATION_MS = 3000;
-const GACHA_COOLDOWN_MS = 4000;
+const API_TIMEOUT_MS = 10_000;
+const PENDING_DRAW_REQUEST_KEY = "discord-gacha:pending-draw-request";
 const SESSION_POLL_MS = 7000;
 const LEADERBOARD_POLL_MS = 9000;
 const statLabels: Record<string, string> = {
@@ -127,7 +131,10 @@ async function fetchJsonWithRetry(
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, {
+        ...init,
+        signal: init.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+      });
       const value = await readJsonResponse(response, endpoint);
       if (!shouldRetry(response, value) || attempt === 2) return { response, value };
     } catch (reason) {
@@ -224,6 +231,7 @@ async function api<T>(path: string, init?: RequestInit) {
     const response = await fetch(`${apiPrefix}${path}`, {
       ...init,
       credentials: "same-origin",
+      signal: init?.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
       headers: {
         "content-type": "application/json",
         ...(init?.headers ?? {}),
@@ -248,8 +256,10 @@ async function api<T>(path: string, init?: RequestInit) {
 function isRetryableDrawError(reason: unknown) {
   const message = reason instanceof Error ? reason.message : "";
   return reason instanceof TypeError
+    || (reason instanceof DOMException && ["AbortError", "TimeoutError"].includes(reason.name))
     || message === "backend_error"
     || message === "request_failed"
+    || message === "response_serialization_failed"
     || message.startsWith("empty_response_")
     || message.startsWith("invalid_json_response_");
 }
@@ -293,6 +303,22 @@ function statEntries(stats: Stats) {
 
 function sleep(milliseconds: number) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function loadPendingDrawRequestId() {
+  try {
+    const value = window.sessionStorage.getItem(PENDING_DRAW_REQUEST_KEY);
+    if (value && /^[A-Za-z0-9_-]{8,128}$/u.test(value)) return value;
+    window.sessionStorage.removeItem(PENDING_DRAW_REQUEST_KEY);
+  } catch {}
+  return null;
+}
+
+function storePendingDrawRequestId(value: string | null) {
+  try {
+    if (value) window.sessionStorage.setItem(PENDING_DRAW_REQUEST_KEY, value);
+    else window.sessionStorage.removeItem(PENDING_DRAW_REQUEST_KEY);
+  } catch {}
 }
 
 const Icon = ({ name }: { name: "spark" | "bag" | "book" | "ticket" | "gem" }) => {
@@ -556,6 +582,11 @@ export const App = () => {
   const imageLoadedRef = useRef(0);
   const imageTotalRef = useRef(0);
   const phaserProgressRef = useRef(0);
+  const pendingDrawRequestIdRef = useRef<string | null>(
+    loadPendingDrawRequestId(),
+  );
+  const sessionRequestVersionRef = useRef(0);
+  const leaderboardRequestVersionRef = useRef(0);
   busyRef.current = busy;
   autoRunningRef.current = autoRunning;
 
@@ -592,9 +623,17 @@ export const App = () => {
   }, [updateProgress]);
 
   const refreshLeaderboard = () => {
+    const requestVersion = ++leaderboardRequestVersionRef.current;
     api<Leaderboard>("/api/gacha/leaderboard")
-      .then((next) => { setLeaderboard(next); setLeaderboardFailed(false); })
-      .catch(() => setLeaderboardFailed(true));
+      .then((next) => {
+        if (requestVersion !== leaderboardRequestVersionRef.current) return;
+        setLeaderboard(next);
+        setLeaderboardFailed(false);
+      })
+      .catch(() => {
+        if (requestVersion === leaderboardRequestVersionRef.current)
+          setLeaderboardFailed(true);
+      });
   };
 
   useEffect(() => {
@@ -607,7 +646,18 @@ export const App = () => {
     let cancelled = false;
     const poll = () => {
       if (cancelled || busyRef.current || autoRunningRef.current) return;
-      api<Session>("/api/gacha/session").then((next) => { if (!cancelled) applySession(next); }).catch(() => {});
+      const requestVersion = ++sessionRequestVersionRef.current;
+      api<Session>("/api/gacha/session")
+        .then((next) => {
+          if (
+            !cancelled &&
+            requestVersion === sessionRequestVersionRef.current &&
+            !busyRef.current &&
+            !autoRunningRef.current
+          )
+            applySession(next);
+        })
+        .catch(() => {});
     };
     const timer = window.setInterval(poll, SESSION_POLL_MS);
     return () => { cancelled = true; window.clearInterval(timer); };
@@ -615,13 +665,17 @@ export const App = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const requestVersion = ++sessionRequestVersionRef.current;
     const sessionP = api<Session>("/api/gacha/session").then((s) => {
-      if (!cancelled) { apiProgressRef.current = 0.5; updateProgress(); }
+      if (!cancelled && requestVersion === sessionRequestVersionRef.current) {
+        apiProgressRef.current = 0.5;
+        updateProgress();
+      }
       return s;
     });
     Promise.all([sessionP, api<CatalogItem[]>("/api/gacha/items")])
       .then(([nextSession, nextCatalog]) => {
-        if (cancelled) return;
+        if (cancelled || requestVersion !== sessionRequestVersionRef.current) return;
         apiProgressRef.current = 1;
         sessionRef.current = nextSession;
         setSession(nextSession);
@@ -632,7 +686,14 @@ export const App = () => {
       .catch((reason: unknown) => {
         if (!cancelled) setError(errorMessage(reason));
       });
-    return () => { cancelled = true; stopRequested.current = true; };
+    return () => {
+      cancelled = true;
+      stopRequested.current = true;
+      sessionRequestVersionRef.current += 1;
+      leaderboardRequestVersionRef.current += 1;
+      if (cooldownTimerRef.current !== null)
+        window.clearInterval(cooldownTimerRef.current);
+    };
   }, [updateProgress]);
 
   const applySession = (nextSession: Session) => {
@@ -641,6 +702,7 @@ export const App = () => {
   };
 
   const drawOne = async () => {
+    sessionRequestVersionRef.current += 1;
     const needsZoom = !ritualZoomedRef.current;
     if (needsZoom) {
       ritualZoomedRef.current = true;
@@ -650,7 +712,7 @@ export const App = () => {
     setLatest(null);
     setPhase("charging");
     const startedAt = performance.now();
-    const cooldownEndsAt = startedAt + GACHA_COOLDOWN_MS;
+    let cooldownEndsAt = gachaCycleDeadline(startedAt);
     let committed = false;
     if (cooldownTimerRef.current !== null) window.clearInterval(cooldownTimerRef.current);
     const updateCountdown = () => {
@@ -663,7 +725,13 @@ export const App = () => {
     };
     updateCountdown();
     cooldownTimerRef.current = window.setInterval(updateCountdown, 100);
-    const resultPromise = drawWithRetry(crypto.randomUUID());
+    const requestId = pendingDrawRequestIdRef.current ?? crypto.randomUUID();
+    pendingDrawRequestIdRef.current = requestId;
+    storePendingDrawRequestId(requestId);
+    const resultPromise = drawWithRetry(requestId);
+    // Observe an early network failure while the reveal choreography continues;
+    // the original promise is still awaited below and preserves the exception.
+    void resultPromise.catch(() => {});
     try {
       await sleep(1100);
       setPhase("omen");
@@ -672,6 +740,8 @@ export const App = () => {
       await sleep(450);
       setPhase("reveal");
       const result = await resultPromise;
+      pendingDrawRequestIdRef.current = null;
+      storePendingDrawRequestId(null);
       committed = true;
       applySession(result.session);
       const catalogItem = catalogRef.current.find((entry) => entry.itemCode === result.itemCode);
@@ -679,8 +749,16 @@ export const App = () => {
       await sleep(Math.max(0, GACHA_ANIMATION_MS - (performance.now() - startedAt)));
       setLatest(result);
       setPhase("result");
+      cooldownEndsAt = gachaCycleDeadline(startedAt, performance.now());
+      updateCountdown();
       if (needsZoom) setOpening(false);
       return result;
+    } catch (reason) {
+      if (!isRetryableDrawError(reason)) {
+        pendingDrawRequestIdRef.current = null;
+        storePendingDrawRequestId(null);
+      }
+      throw reason;
     } finally {
       if (committed) await sleep(Math.max(0, cooldownEndsAt - performance.now()));
       if (cooldownTimerRef.current !== null) window.clearInterval(cooldownTimerRef.current);
@@ -690,8 +768,9 @@ export const App = () => {
   };
 
   const draw = async () => {
-    if (busy || autoRunning || !sessionRef.current) return;
+    if (busyRef.current || autoRunningRef.current || !sessionRef.current) return;
     setError("");
+    busyRef.current = true;
     setBusy(true);
     try { await drawOne(); }
     catch (reason) {
@@ -701,13 +780,14 @@ export const App = () => {
       closeWorldCamera();
       setError(readableError(reason));
     }
-    finally { setBusy(false); refreshLeaderboard(); }
+    finally { busyRef.current = false; setBusy(false); refreshLeaderboard(); }
   };
 
   const autoDraw = async () => {
-    if (busy || autoRunning || !sessionRef.current?.canDraw) return;
+    if (busyRef.current || autoRunningRef.current || !sessionRef.current?.canDraw) return;
     setError("");
     stopRequested.current = false;
+    autoRunningRef.current = true;
     setAutoRunning(true);
     try {
       while (!stopRequested.current && sessionRef.current?.canDraw) {
@@ -717,6 +797,7 @@ export const App = () => {
     } catch (reason) {
       if (!stopRequested.current) setError(readableError(reason));
     } finally {
+      autoRunningRef.current = false;
       setAutoRunning(false);
       setLatest(null);
       ritualZoomedRef.current = false;
@@ -730,7 +811,7 @@ export const App = () => {
   const closeWorldCamera = () => {
     const controller = worldRef.current;
     if (!controller) return;
-    controller.playCloseCamera().finally(() => controller.resetToIdle());
+    void controller.playCloseCamera();
   };
 
   const closeLatest = () => {

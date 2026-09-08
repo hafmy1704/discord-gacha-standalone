@@ -67,6 +67,21 @@ create table if not exists public.user_activity_log (
   created_at timestamptz not null default now()
 );
 
+-- Durable effect receipts are intentionally separate from the one-month
+-- activity feed. Deleting presentation/history rows must never make an old
+-- externally supplied request identifier executable again.
+create table if not exists public.request_receipts (
+  guild_id   text        not null,
+  event_type text        not null check (event_type in (
+    'chat_reward', 'gacha_roll', 'admin_grant'
+  )),
+  request_id text        not null,
+  user_id    text        not null,
+  result     jsonb       not null,
+  created_at timestamptz not null default now(),
+  primary key (guild_id, event_type, request_id)
+);
+
 create unique index if not exists user_activity_log_request_idx
   on public.user_activity_log (guild_id, event_type, request_id)
   where request_id is not null;
@@ -101,20 +116,18 @@ language plpgsql
 immutable
 as $$
 declare
-  level integer := 1;
-  next_required bigint;
+  completed_steps bigint;
+  discriminant numeric;
 begin
   if p_xp is null or p_xp < 0 then
     raise exception using message = 'invalid_cultivation_xp';
   end if;
 
-  loop
-    next_required := 50 * (level + 1) * level;
-    exit when next_required > p_xp;
-    level := level + 1;
-  end loop;
-
-  return level;
+  -- 50 * L * (L - 1) <= XP. Reduce XP first so the discriminant remains
+  -- exact for every bigint input, then solve the quadratic in constant time.
+  completed_steps := p_xp / 50;
+  discriminant := 1::numeric + 4::numeric * completed_steps;
+  return floor((1::numeric + sqrt(discriminant)) / 2)::integer;
 end;
 $$;
 
@@ -123,7 +136,12 @@ returns bigint
 language sql
 immutable
 as $$
-  select p_xp - 50 * public.cultivation_level(p_xp) * (public.cultivation_level(p_xp) - 1);
+  select (
+    p_xp::numeric
+      - 50::numeric
+        * public.cultivation_level(p_xp)
+        * (public.cultivation_level(p_xp) - 1)
+  )::bigint;
 $$;
 
 create or replace function public.hon_khi_vault_cost(p_level integer)
@@ -156,7 +174,9 @@ begin
 
   loop
     cost := public.hon_khi_vault_cost(level);
-    exit when spent + cost > p_xp;
+    -- Compare against the remaining balance so spent + cost cannot overflow
+    -- at the upper edge of bigint.
+    exit when cost > p_xp - spent;
     spent := spent + cost;
     level := level + 1;
   end loop;
@@ -243,8 +263,60 @@ as $$
 begin
   insert into public.guild_config (guild_id, channel_ids)
   values (p_guild_id, p_channels)
-  on conflict (guild_id) do update
-    set channel_ids = excluded.channel_ids;
+  on conflict (guild_id) do nothing;
+end;
+$$;
+
+create or replace function public.set_reward_channel(
+  p_guild_id  text,
+  p_channel_id text,
+  p_enabled    boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  config_row public.guild_config%rowtype;
+  changed boolean;
+begin
+  if p_guild_id is null or length(p_guild_id) < 1
+     or p_channel_id is null or length(p_channel_id) < 1
+     or p_enabled is null then
+    raise exception using message = 'invalid_channel_id';
+  end if;
+
+  select * into config_row
+  from public.guild_config
+  where guild_id = p_guild_id
+  for update;
+  if not found then
+    raise exception using message = 'guild_not_configured';
+  end if;
+
+  if p_enabled then
+    changed := not (p_channel_id = any(config_row.channel_ids));
+    if changed then
+      config_row.channel_ids := array_append(config_row.channel_ids, p_channel_id);
+    end if;
+  else
+    changed := p_channel_id = any(config_row.channel_ids);
+    if changed then
+      config_row.channel_ids := array_remove(config_row.channel_ids, p_channel_id);
+    end if;
+  end if;
+
+  if changed then
+    update public.guild_config
+    set channel_ids = config_row.channel_ids
+    where guild_id = p_guild_id;
+  end if;
+
+  return jsonb_build_object(
+    'changed', changed,
+    'channel_ids', to_jsonb(config_row.channel_ids)
+  );
 end;
 $$;
 
@@ -330,9 +402,11 @@ security definer
 set search_path = public
 as $$
 declare
-  player_row public.players%rowtype;
-  old_event  public.user_activity_log%rowtype;
-  new_orders bigint;
+  player_row   public.players%rowtype;
+  old_event    public.user_activity_log%rowtype;
+  receipt_row  public.request_receipts%rowtype;
+  new_orders   bigint;
+  response_json jsonb;
 begin
   if p_amount < 1 or p_amount > 1000000 or p_delta not in (-1, 1) then
     raise exception using message = 'invalid_amount';
@@ -341,6 +415,27 @@ begin
     raise exception using message = 'invalid_source_id';
   end if;
 
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      format('%s:%s:%s', p_guild_id, 'admin_grant', p_source_id),
+      0
+    )
+  );
+
+  select * into receipt_row
+  from public.request_receipts
+  where guild_id = p_guild_id
+    and event_type = 'admin_grant'
+    and request_id = p_source_id;
+  if found then
+    if receipt_row.user_id <> p_user_id then
+      raise exception using message = 'invalid_source_id';
+    end if;
+    return receipt_row.result || jsonb_build_object('duplicate', true);
+  end if;
+
+  -- Compatibility with installations upgraded from an earlier schema. A
+  -- replay of a still-retained legacy activity row promotes it to a receipt.
   select * into old_event
   from public.user_activity_log
   where guild_id = p_guild_id
@@ -350,10 +445,15 @@ begin
     if old_event.user_id <> p_user_id then
       raise exception using message = 'invalid_source_id';
     end if;
-    return jsonb_build_object(
-      'duplicate', true,
+    response_json := jsonb_build_object(
+      'duplicate', false,
       'soul_orders', (old_event.payload ->> 'soulOrdersAfter')::bigint
     );
+    insert into public.request_receipts
+      (guild_id, event_type, request_id, user_id, result)
+    values
+      (p_guild_id, 'admin_grant', p_source_id, p_user_id, response_json);
+    return response_json || jsonb_build_object('duplicate', true);
   end if;
 
   select * into player_row
@@ -373,6 +473,16 @@ begin
   set soul_orders = new_orders
   where guild_id = p_guild_id and user_id = p_user_id;
 
+  response_json := jsonb_build_object(
+    'duplicate', false,
+    'soul_orders', new_orders
+  );
+
+  insert into public.request_receipts
+    (guild_id, event_type, request_id, user_id, result)
+  values
+    (p_guild_id, 'admin_grant', p_source_id, p_user_id, response_json);
+
   insert into public.user_activity_log
     (guild_id, user_id, event_type, request_id, payload)
   values
@@ -385,7 +495,7 @@ begin
        'soulOrdersAfter', new_orders
      ));
 
-  return jsonb_build_object('duplicate', false, 'soul_orders', new_orders);
+  return response_json;
 end;
 $$;
 
@@ -498,12 +608,12 @@ begin
     'soulOrders', player_row.soul_orders,
     'cultivationLevel', cultivation_level,
     'cultivationPoints', public.cultivation_points(player_row.cultivation_xp),
-    'cultivationPointsRequired', 100 * cultivation_level,
+    'cultivationPointsRequired', 100::bigint * cultivation_level,
     'cultivationProgress', cultivation_progress,
     'vaultXp', player_row.vault_xp,
     'vaultLevel', public.hon_khi_vault_level(player_row.vault_xp),
     'equipmentPower', equipment_power,
-    'power', cultivation_level * 100 + equipment_power,
+    'power', cultivation_level::numeric * 100 + equipment_power,
     'equipmentStats', equipment_stats,
     'totalRolls', total_rolls
   );
@@ -717,6 +827,7 @@ declare
   player_row         public.players%rowtype;
   player_after       public.players%rowtype;
   activity_row       public.user_activity_log%rowtype;
+  receipt_row        public.request_receipts%rowtype;
   old_equipped       public.hon_khi_equipped%rowtype;
   catalog_row        public.hon_khi_catalog%rowtype;
   rolled_tier        integer;
@@ -760,6 +871,26 @@ begin
     raise exception using message = 'invalid_request_id';
   end if;
 
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      format('%s:%s:%s', p_guild_id, 'gacha_roll', p_request_id),
+      0
+    )
+  );
+
+  select * into receipt_row
+  from public.request_receipts
+  where guild_id = p_guild_id
+    and event_type = 'gacha_roll'
+    and request_id = p_request_id;
+  if found then
+    if receipt_row.user_id <> p_user_id then
+      raise exception using message = 'invalid_request_id';
+    end if;
+    return receipt_row.result || jsonb_build_object('replayed', true);
+  end if;
+
+  -- Promote a retained pre-receipt activity row when upgrading an existing DB.
   select * into activity_row
   from public.user_activity_log
   where guild_id = p_guild_id
@@ -770,6 +901,10 @@ begin
     if activity_row.user_id <> p_user_id then
       raise exception using message = 'invalid_request_id';
     end if;
+    insert into public.request_receipts
+      (guild_id, event_type, request_id, user_id, result)
+    values
+      (p_guild_id, 'gacha_roll', p_request_id, p_user_id, activity_row.payload);
     return activity_row.payload || jsonb_build_object('replayed', true);
   end if;
 
@@ -963,6 +1098,11 @@ begin
     'replayed', false
   );
 
+  insert into public.request_receipts
+    (guild_id, event_type, request_id, user_id, result)
+  values
+    (p_guild_id, 'gacha_roll', p_request_id, p_user_id, activity_payload);
+
   insert into public.user_activity_log
     (guild_id, user_id, event_type, request_id, payload)
   values
@@ -993,7 +1133,7 @@ begin
       public.cultivation_level(p.cultivation_xp) as cultivation_level,
       public.hon_khi_vault_level(p.vault_xp) as vault_level,
       round(
-        public.cultivation_level(p.cultivation_xp) * 100
+        public.cultivation_level(p.cultivation_xp)::numeric * 100
         + coalesce(sum(e.power), 0),
         2
       ) as power,
@@ -1001,7 +1141,7 @@ begin
       row_number() over (
         order by
           round(
-            public.cultivation_level(p.cultivation_xp) * 100
+            public.cultivation_level(p.cultivation_xp)::numeric * 100
             + coalesce(sum(e.power), 0),
             2
           ) desc,
@@ -1066,13 +1206,6 @@ as $$
 declare
   result jsonb;
 begin
-  perform pg_advisory_xact_lock(
-    hashtextextended(
-      format('%s:%s:%s', p_guild_id, p_user_id, p_request_id),
-      0
-    )
-  );
-
   result := public.draw_hon_khi(p_guild_id, p_user_id, p_request_id);
   return result || jsonb_build_object(
     'session', public.get_hon_khi_session(p_guild_id, p_user_id)
@@ -1097,6 +1230,7 @@ as $$
 declare
   player_row        public.players%rowtype;
   old_event         public.user_activity_log%rowtype;
+  receipt_row       public.request_receipts%rowtype;
   last_reward_at    timestamptz;
   cooldown_ms       constant bigint := 60000;
   base_pts          integer;
@@ -1112,7 +1246,40 @@ declare
   skip              boolean := false;
   skip_reason       text;
   activity_payload  jsonb;
+  response_json     jsonb;
 begin
+  if p_message_id is null or length(p_message_id) < 1 or length(p_message_id) > 128 then
+    raise exception using message = 'invalid_message_id';
+  end if;
+  if p_fingerprint is not null and p_fingerprint !~ '^[0-9a-f]{16}$' then
+    raise exception using message = 'invalid_fingerprint';
+  end if;
+  if p_unique_chars is null or p_unique_chars < 0
+     or p_sentence_count is null or p_sentence_count < 1
+     or p_is_reply is null then
+    raise exception using message = 'invalid_chat_metrics';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      format('%s:%s:%s', p_guild_id, 'chat_reward', p_message_id),
+      0
+    )
+  );
+
+  select * into receipt_row
+  from public.request_receipts
+  where guild_id = p_guild_id
+    and event_type = 'chat_reward'
+    and request_id = p_message_id;
+  if found then
+    if receipt_row.user_id <> p_user_id then
+      raise exception using message = 'invalid_message_id';
+    end if;
+    return receipt_row.result || jsonb_build_object('duplicate', true);
+  end if;
+
+  -- Promote a retained pre-receipt activity row when upgrading an existing DB.
   select * into old_event
   from public.user_activity_log
   where guild_id = p_guild_id
@@ -1120,12 +1287,20 @@ begin
     and request_id = p_message_id;
 
   if found then
-    return jsonb_build_object(
+    if old_event.user_id <> p_user_id then
+      raise exception using message = 'invalid_message_id';
+    end if;
+    response_json := jsonb_build_object(
       'skipped', coalesce((old_event.payload ->> 'skipped')::boolean, false),
-      'duplicate', true,
+      'duplicate', false,
       'cultivation_points', coalesce((old_event.payload ->> 'cultivationPoints')::integer, 0),
       'soul_orders', coalesce((old_event.payload ->> 'soulOrders')::integer, 0)
     );
+    insert into public.request_receipts
+      (guild_id, event_type, request_id, user_id, result)
+    values
+      (p_guild_id, 'chat_reward', p_message_id, p_user_id, response_json);
+    return response_json || jsonb_build_object('duplicate', true);
   end if;
 
   if not exists (
@@ -1213,12 +1388,7 @@ begin
     'skipReason', skip_reason
   );
 
-  insert into public.user_activity_log
-    (guild_id, user_id, event_type, request_id, payload)
-  values
-    (p_guild_id, p_user_id, 'chat_reward', p_message_id, activity_payload);
-
-  return jsonb_build_object(
+  response_json := jsonb_build_object(
     'skipped', skip,
     'skip_reason', skip_reason,
     'duplicate', false,
@@ -1227,6 +1397,18 @@ begin
     'new_level', coalesce(new_lvl, old_lvl),
     'leveled_up', coalesce(new_lvl > old_lvl, false)
   );
+
+  insert into public.request_receipts
+    (guild_id, event_type, request_id, user_id, result)
+  values
+    (p_guild_id, 'chat_reward', p_message_id, p_user_id, response_json);
+
+  insert into public.user_activity_log
+    (guild_id, user_id, event_type, request_id, payload)
+  values
+    (p_guild_id, p_user_id, 'chat_reward', p_message_id, activity_payload);
+
+  return response_json;
 end;
 $$;
 
@@ -1236,6 +1418,7 @@ alter table public.hon_khi_catalog        enable row level security;
 alter table public.hon_khi_equipped       enable row level security;
 alter table public.user_hon_khi_collection enable row level security;
 alter table public.user_activity_log      enable row level security;
+alter table public.request_receipts       enable row level security;
 
 revoke all on
   public.guild_config,
@@ -1243,7 +1426,8 @@ revoke all on
   public.hon_khi_catalog,
   public.hon_khi_equipped,
   public.user_hon_khi_collection,
-  public.user_activity_log
+  public.user_activity_log,
+  public.request_receipts
 from public, anon, authenticated;
 
 grant all on
@@ -1252,7 +1436,8 @@ grant all on
   public.hon_khi_catalog,
   public.hon_khi_equipped,
   public.user_hon_khi_collection,
-  public.user_activity_log
+  public.user_activity_log,
+  public.request_receipts
 to service_role;
 
 revoke execute on function
@@ -1264,6 +1449,7 @@ revoke execute on function
   public.hon_khi_tier_rates(integer),
   public.hon_khi_slot_label(text),
   public.ensure_guild_config(text, text[]),
+  public.set_reward_channel(text, text, boolean),
   public.enroll_player(text, text, boolean),
   public.adjust_soul_orders(text, text, integer, text, text, text, integer),
   public.grant_soul_orders(text, text, integer, text, text, text),
@@ -1287,6 +1473,7 @@ grant execute on function
   public.hon_khi_tier_rates(integer),
   public.hon_khi_slot_label(text),
   public.ensure_guild_config(text, text[]),
+  public.set_reward_channel(text, text, boolean),
   public.enroll_player(text, text, boolean),
   public.adjust_soul_orders(text, text, integer, text, text, text, integer),
   public.grant_soul_orders(text, text, integer, text, text, text),

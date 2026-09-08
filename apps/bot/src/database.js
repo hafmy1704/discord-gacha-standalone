@@ -52,6 +52,7 @@ export function createDatabase({
         "insufficient_soul_orders",
         "invalid_request_id",
         "invalid_source_id",
+        "invalid_channel_id",
         "not_enrolled",
         "not_awakened",
         "invalid_amount",
@@ -93,37 +94,24 @@ export function createDatabase({
     },
 
     async addRewardChannel({ guildId, channelId }) {
-      const rows = await select(
-        "guild_config",
-        { guild_id: guildId },
-        "channel_ids",
-      );
-      const current = new Set(rows?.[0]?.channel_ids ?? []);
-      current.add(channelId);
-      const channels = [...current];
-      await rest(`guild_config?guild_id=eq.${encodeURIComponent(guildId)}`, {
-        method: "PATCH",
-        headers: { prefer: "return=minimal" },
-        body: JSON.stringify({ channel_ids: channels }),
+      const result = await rpc("set_reward_channel", {
+        p_guild_id: guildId,
+        p_channel_id: channelId,
+        p_enabled: true,
       });
-      return channels;
+      return result?.channel_ids ?? [];
     },
 
     async removeRewardChannel({ guildId, channelId }) {
-      const rows = await select(
-        "guild_config",
-        { guild_id: guildId },
-        "channel_ids",
-      );
-      const current = new Set(rows?.[0]?.channel_ids ?? []);
-      const removed = current.delete(channelId);
-      const channels = [...current];
-      await rest(`guild_config?guild_id=eq.${encodeURIComponent(guildId)}`, {
-        method: "PATCH",
-        headers: { prefer: "return=minimal" },
-        body: JSON.stringify({ channel_ids: channels }),
+      const result = await rpc("set_reward_channel", {
+        p_guild_id: guildId,
+        p_channel_id: channelId,
+        p_enabled: false,
       });
-      return { removed, channels };
+      return {
+        removed: Boolean(result?.changed),
+        channels: result?.channel_ids ?? [],
+      };
     },
 
     async getWelcomeMessageId(guildId) {

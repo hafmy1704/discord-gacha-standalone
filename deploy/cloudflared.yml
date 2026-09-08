@@ -1,0 +1,9 @@
+tunnel: 0ee40a29-9b9b-4b66-be5d-dea5dfb6c987
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: gacha.monas.us
+    service: http://app:6969
+    originRequest:
+      connectTimeout: 10s
+  - service: http_status:404

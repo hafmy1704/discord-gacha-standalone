@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-const URL_PATTERN = /https?:\/\/\S+|www\.\S+/giu;
+const URL_PATTERN =
+  /(?:https?:\/\/|www\.)\S+|\b(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,62}[\p{L}\p{N}])?\.)+[\p{L}]{2,63}(?:[/?#]\S*)?/giu;
 const MENTION_PATTERN = /<[@#][!&]?\d+>/gu;
 const EMOJI_PATTERN = /<a?:[\w~]+:\d+>/gu;
 

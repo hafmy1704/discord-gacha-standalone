@@ -1,0 +1,13 @@
+.git
+.gitignore
+.agents
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+**/dist
+*.log
+*.tsbuildinfo
+.tmp-*
+icon-test.png

@@ -41,7 +41,7 @@ export function verifyLaunchToken(token, { secret, now = Date.now() }) {
     !data.guildId ||
     !data.userId ||
     !Number.isInteger(data.expiresAt) ||
-    data.expiresAt < now
+    data.expiresAt <= now
   )
     throw new Error("expired launch token");
   return data;

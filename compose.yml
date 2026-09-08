@@ -1,0 +1,53 @@
+services:
+  app:
+    image: discord-gacha-standalone:local
+    container_name: discord-gacha-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_DISCORD_APPLICATION_ID: ${VITE_DISCORD_APPLICATION_ID:?VITE_DISCORD_APPLICATION_ID is required}
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      PORT: 6969
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:6969:6969"
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6969/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.8.3
+    container_name: discord-gacha-tunnel
+    command:
+      - tunnel
+      - --config
+      - /etc/cloudflared/config.yml
+      - --no-autoupdate
+      - run
+    volumes:
+      - type: bind
+        source: ./deploy/cloudflared.yml
+        target: /etc/cloudflared/config.yml
+        read_only: true
+      - type: bind
+        source: ${CLOUDFLARED_CREDENTIALS_FILE:?CLOUDFLARED_CREDENTIALS_FILE is required}
+        target: /etc/cloudflared/credentials.json
+        read_only: true
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped

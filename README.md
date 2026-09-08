@@ -139,6 +139,22 @@ create table public.user_activity_log (
 );
 ```
 
+`request_receipts` giữ biên nhận idempotency độc lập với log hiển thị. Bảng này
+không bị tác vụ dọn log một tháng xóa, nên retry cùng `request_id` không thể thực
+thi lại một giao dịch đã commit.
+
+```sql
+create table public.request_receipts (
+  guild_id   text        not null,
+  event_type text        not null,
+  request_id text        not null,
+  user_id    text        not null,
+  result     jsonb       not null,
+  created_at timestamptz not null default now(),
+  primary key (guild_id, event_type, request_id)
+);
+```
+
 ## Cài đặt
 
 ### 1. Clone & install
