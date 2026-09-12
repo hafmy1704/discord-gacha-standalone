@@ -197,7 +197,7 @@ function isHashedBuildAsset(relativePath) {
 async function exchangeActivityCode({ code, clientId, clientSecret }) {
   if (
     typeof code !== "string" ||
-    !/^[A-Za-z0-9._-]{8,2048}$/u.test(code) ||
+    code.length < 1 || code.length > 2048 ||
     !clientId ||
     !clientSecret
   )

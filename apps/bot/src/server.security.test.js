@@ -75,7 +75,7 @@ test("miniapp security boundaries", async () => {
         origin: "https://evil.example",
         "sec-fetch-site": "cross-site",
       },
-      body: JSON.stringify({ code: "valid-code" }),
+      body: JSON.stringify({ code: "valid/code+chars=" }),
     });
     assert.equal(response.status, 403);
     assert.equal((await response.json()).error, "csrf_rejected");
@@ -86,7 +86,7 @@ test("miniapp security boundaries", async () => {
         "content-type": "application/json",
         origin: "https://activity.example",
       },
-      body: JSON.stringify({ code: "valid-code" }),
+      body: JSON.stringify({ code: "valid/code+chars=" }),
     });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { ok: true });
