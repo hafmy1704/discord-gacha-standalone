@@ -54,7 +54,6 @@ export function createDatabase({
         "invalid_source_id",
         "invalid_channel_id",
         "not_enrolled",
-        "not_awakened",
         "invalid_amount",
         "guild_not_configured",
       ];
@@ -69,6 +68,14 @@ export function createDatabase({
       .map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`)
       .join("&");
     return rest(`${table}?${qs}&select=${selectCols}`);
+  }
+
+  async function ensurePlayer({ guildId, userId }) {
+    return rest("players?on_conflict=guild_id%2Cuser_id", {
+      method: "POST",
+      headers: { prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({ guild_id: guildId, user_id: userId }),
+    });
   }
 
   return {
@@ -133,11 +140,10 @@ export function createDatabase({
 
     // ── Players ───────────────────────────────────────────────
 
-    async enrollPlayer({ guildId, userId, awaken = false }) {
+    async enrollPlayer({ guildId, userId }) {
       return rpc("enroll_player", {
         p_guild_id: guildId,
         p_user_id: userId,
-        p_awaken: awaken,
       });
     },
 
@@ -230,6 +236,7 @@ export function createDatabase({
       sentenceCount,
       isHumanReply,
     }) {
+      await ensurePlayer({ guildId, userId });
       return rpc("award_chat_message", {
         p_guild_id: guildId,
         p_user_id: userId,
@@ -238,6 +245,41 @@ export function createDatabase({
         p_unique_chars: uniqueCharacters,
         p_sentence_count: sentenceCount,
         p_is_reply: Boolean(isHumanReply),
+      });
+    },
+
+    async setVoiceSession({ guildId, userId, active }) {
+      return rpc("set_voice_session", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_active: Boolean(active),
+      });
+    },
+
+    async awardVoiceActivity({ guildId, userId, channelId }) {
+      return rpc("award_voice_activity", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_channel_id: channelId ?? null,
+      });
+    },
+
+    async claimLevelUpEvents(limit = 50) {
+      return rpc("claim_level_up_events", { p_limit: limit });
+    },
+
+    async markLevelUpEventSent({ eventId, claimToken }) {
+      return rpc("mark_level_up_event_sent", {
+        p_event_id: eventId,
+        p_claim_token: claimToken,
+      });
+    },
+
+    async markLevelUpEventFailed({ eventId, claimToken, error }) {
+      return rpc("mark_level_up_event_failed", {
+        p_event_id: eventId,
+        p_claim_token: claimToken,
+        p_error: String(error ?? "unknown error").slice(0, 500),
       });
     },
 
@@ -343,9 +385,8 @@ function mapHonKhiRoll(value) {
 
 function mapPlayerProfile(value) {
   return {
-    isAwakened: Boolean(value.isAwakened),
     soulOrders: Number(value.soulOrders ?? 0),
-    cultivationLevel: Number(value.cultivationLevel ?? 1),
+    cultivationLevel: Number(value.cultivationLevel ?? 0),
     cultivationPoints: Number(value.cultivationPoints ?? 0),
     cultivationPointsRequired: Number(value.cultivationPointsRequired ?? 100),
     cultivationProgress: Number(value.cultivationProgress ?? 0),
@@ -363,7 +404,7 @@ function mapLeaderboardEntry(value) {
     rank: Number(value.rank ?? 0),
     power: Number(value.power ?? 0),
     vaultLevel: Number(value.vaultLevel ?? 1),
-    cultivationLevel: Number(value.cultivationLevel ?? 1),
+    cultivationLevel: Number(value.cultivationLevel ?? 0),
     highestTier: Number(value.highestTier ?? 0),
     tag: anonymiseUserId(value.userId),
     isSelf: Boolean(value.isSelf),

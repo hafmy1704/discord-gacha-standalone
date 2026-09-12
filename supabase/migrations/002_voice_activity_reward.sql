@@ -1,5 +1,7 @@
 begin;
 
+drop function if exists public.enroll_player(text, text, boolean);
+
 create table if not exists public.guild_config (
   guild_id           text primary key,
   channel_ids        text[] not null default '{}'::text[],
@@ -1453,6 +1455,450 @@ grant execute on function
   public.award_chat_message(text, text, text, text, integer, integer, boolean)
 to service_role;
 
+
+
+
+alter table public.players add column if not exists last_voice_reward_at timestamptz;
+
+create table if not exists public.voice_reward_buckets (
+  guild_id text not null,
+  user_id text not null,
+  bucket_start timestamptz not null,
+  created_at timestamptz not null default now(),
+  primary key (guild_id, user_id, bucket_start),
+  foreign key (guild_id, user_id) references public.players(guild_id, user_id) on delete cascade
+);
+
+create table if not exists public.level_up_events (
+  id bigint generated always as identity primary key,
+  guild_id text not null,
+  user_id text not null,
+  level integer not null check (level >= 1),
+  cultivation_xp bigint not null check (cultivation_xp >= 0),
+  source_request_id text,
+  status text not null default 'pending' check (status in ('pending', 'claimed', 'sent', 'failed')),
+  attempts integer not null default 0 check (attempts >= 0),
+  claim_token text,
+  claimed_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz,
+  unique (guild_id, user_id, level),
+  foreign key (guild_id, user_id) references public.players(guild_id, user_id) on delete cascade
+);
+create index if not exists level_up_events_status_idx on public.level_up_events(status, created_at);
+
+create or replace function public.queue_level_up_events(p_guild_id text, p_user_id text, p_old_level integer, p_new_level integer, p_cultivation_xp bigint, p_source_request_id text)
+returns void language sql security definer set search_path = public as $$
+  insert into public.level_up_events (guild_id, user_id, level, cultivation_xp, source_request_id)
+  select p_guild_id, p_user_id, level, p_cultivation_xp, p_source_request_id
+  from generate_series(p_old_level + 1, p_new_level) as level
+  where p_new_level > p_old_level
+  on conflict (guild_id, user_id, level) do nothing;
+$$;
+
+create or replace function public.set_voice_session(p_guild_id text, p_user_id text, p_active boolean)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_count integer;
+begin
+  update public.players
+  set last_voice_reward_at = case when p_active then now() else null end
+  where guild_id = p_guild_id and user_id = p_user_id;
+  get diagnostics v_count = row_count;
+  return jsonb_build_object('updated', v_count > 0, 'active', p_active);
+end;
+$$;
+
+create or replace function public.award_voice_activity(p_guild_id text, p_user_id text, p_channel_id text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  player_row public.players%rowtype;
+  old_level integer;
+  new_level integer;
+  new_xp bigint;
+  new_orders bigint;
+  bucket_count integer;
+  awarded_buckets integer;
+  reward_until timestamptz;
+  request_id text;
+begin
+  if p_channel_id is null or length(p_channel_id) < 1 or length(p_channel_id) > 128 then
+    raise exception using message = 'invalid_channel_id';
+  end if;
+  select * into player_row from public.players
+  where guild_id = p_guild_id and user_id = p_user_id for update;
+  if not found then
+    return jsonb_build_object('skipped', true, 'skip_reason', 'not_enrolled', 'buckets', 0, 'leveled_up', false);
+  end if;
+  if player_row.last_voice_reward_at is null then
+    update public.players set last_voice_reward_at = now()
+    where guild_id = p_guild_id and user_id = p_user_id;
+    return jsonb_build_object('skipped', true, 'skip_reason', 'session_started', 'buckets', 0, 'leveled_up', false);
+  end if;
+  bucket_count := floor(extract(epoch from (now() - player_row.last_voice_reward_at)) / 600)::integer;
+  if bucket_count < 1 then
+    return jsonb_build_object('skipped', true, 'skip_reason', 'not_due', 'buckets', 0, 'leveled_up', false);
+  end if;
+  reward_until := player_row.last_voice_reward_at + bucket_count * interval '10 minutes';
+  request_id := format('voice:%s:%s', p_user_id, extract(epoch from reward_until)::bigint);
+  insert into public.voice_reward_buckets (guild_id, user_id, bucket_start)
+  select p_guild_id, p_user_id, player_row.last_voice_reward_at + sequence * interval '10 minutes'
+  from generate_series(1, bucket_count) as sequence
+  on conflict (guild_id, user_id, bucket_start) do nothing;
+  get diagnostics awarded_buckets = row_count;
+  update public.players
+  set cultivation_xp = cultivation_xp + awarded_buckets * 10,
+      soul_orders = soul_orders + awarded_buckets,
+      last_voice_reward_at = reward_until
+  where guild_id = p_guild_id and user_id = p_user_id
+  returning cultivation_xp, soul_orders into new_xp, new_orders;
+  old_level := public.cultivation_level(player_row.cultivation_xp);
+  new_level := public.cultivation_level(new_xp);
+  perform public.queue_level_up_events(p_guild_id, p_user_id, old_level, new_level, new_xp, request_id);
+  insert into public.user_activity_log (guild_id, user_id, event_type, request_id, payload)
+  values (p_guild_id, p_user_id, 'voice_reward', request_id, jsonb_build_object(
+    'channelId', p_channel_id, 'buckets', awarded_buckets,
+    'cultivationPoints', awarded_buckets * 10, 'soulOrders', awarded_buckets,
+    'rewardUntil', reward_until));
+  return jsonb_build_object(
+    'skipped', awarded_buckets = 0,
+    'skip_reason', case when awarded_buckets = 0 then 'duplicate_bucket' else null end,
+    'buckets', awarded_buckets, 'cultivation_points', awarded_buckets * 10,
+    'soul_orders', awarded_buckets, 'new_level', new_level,
+    'leveled_up', new_level > old_level);
+end;
+$$;
+
+create or replace function public.claim_level_up_events(p_limit integer default 50)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_claim_token text := md5(random()::text || clock_timestamp()::text);
+  claimed jsonb;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then
+    raise exception using message = 'invalid_event_limit';
+  end if;
+  with candidates as (
+    select id from public.level_up_events
+    where status = 'pending'
+       or (status = 'claimed' and claimed_at < now() - interval '2 minutes')
+       or (status = 'failed' and attempts < 10)
+    order by created_at limit p_limit for update skip locked
+  ), updated as (
+    update public.level_up_events event
+    set status = 'claimed', claim_token = v_claim_token, claimed_at = now(), attempts = attempts + 1
+    from candidates where event.id = candidates.id
+    returning event.id, event.user_id, event.level, event.cultivation_xp, event.claim_token
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'user_id', user_id, 'level', level, 'cultivation_xp', cultivation_xp, 'claim_token', claim_token)), '[]'::jsonb)
+  into claimed from updated;
+  return claimed;
+end;
+$$;
+
+create or replace function public.mark_level_up_event_sent(p_event_id bigint, p_claim_token text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  update public.level_up_events set status = 'sent', sent_at = now(), claim_token = null, claimed_at = null
+  where id = p_event_id and claim_token = p_claim_token;
+  return found;
+end;
+$$;
+
+create or replace function public.mark_level_up_event_failed(p_event_id bigint, p_claim_token text, p_error text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  update public.level_up_events set status = 'failed', claim_token = null, claimed_at = null, last_error = left(p_error, 500)
+  where id = p_event_id and claim_token = p_claim_token;
+  return found;
+end;
+$$;
+
+create or replace function public.award_chat_message(
+  p_guild_id       text,
+  p_user_id        text,
+  p_message_id     text,
+  p_fingerprint    text,
+  p_unique_chars   integer,
+  p_sentence_count integer,
+  p_is_reply       boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  player_row        public.players%rowtype;
+  old_event         public.user_activity_log%rowtype;
+  receipt_row       public.request_receipts%rowtype;
+  last_reward_at    timestamptz;
+  cooldown_ms       constant bigint := 60000;
+  base_pts          integer;
+  bonus_pts         integer;
+  pts_gain          integer := 0;
+  orders_gain       integer := 0;
+  new_pts           bigint;
+  new_xp            bigint;
+  old_lvl           integer;
+  old_pts           bigint;
+  new_lvl           integer;
+  new_orders        bigint;
+  skip              boolean := false;
+  skip_reason       text;
+  activity_payload  jsonb;
+  response_json     jsonb;
+begin
+  if p_message_id is null or length(p_message_id) < 1 or length(p_message_id) > 128 then
+    raise exception using message = 'invalid_message_id';
+  end if;
+  if p_fingerprint is not null and p_fingerprint !~ '^[0-9a-f]{16}$' then
+    raise exception using message = 'invalid_fingerprint';
+  end if;
+  if p_unique_chars is null or p_unique_chars < 0
+     or p_sentence_count is null or p_sentence_count < 1
+     or p_is_reply is null then
+    raise exception using message = 'invalid_chat_metrics';
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      format('%s:%s:%s', p_guild_id, 'chat_reward', p_message_id),
+      0
+    )
+  );
+
+  select * into receipt_row
+  from public.request_receipts
+  where guild_id = p_guild_id
+    and event_type = 'chat_reward'
+    and request_id = p_message_id;
+  if found then
+    if receipt_row.user_id <> p_user_id then
+      raise exception using message = 'invalid_message_id';
+    end if;
+    return receipt_row.result || jsonb_build_object('duplicate', true);
+  end if;
+
+  -- Promote a retained pre-receipt activity row when upgrading an existing DB.
+  select * into old_event
+  from public.user_activity_log
+  where guild_id = p_guild_id
+    and event_type = 'chat_reward'
+    and request_id = p_message_id;
+
+  if found then
+    if old_event.user_id <> p_user_id then
+      raise exception using message = 'invalid_message_id';
+    end if;
+    response_json := jsonb_build_object(
+      'skipped', coalesce((old_event.payload ->> 'skipped')::boolean, false),
+      'duplicate', false,
+      'cultivation_points', coalesce((old_event.payload ->> 'cultivationPoints')::integer, 0),
+      'soul_orders', coalesce((old_event.payload ->> 'soulOrders')::integer, 0)
+    );
+    insert into public.request_receipts
+      (guild_id, event_type, request_id, user_id, result)
+    values
+      (p_guild_id, 'chat_reward', p_message_id, p_user_id, response_json);
+    return response_json || jsonb_build_object('duplicate', true);
+  end if;
+
+  if not exists (
+    select 1 from public.guild_config where guild_id = p_guild_id
+  ) then
+    raise exception using message = 'guild_not_configured';
+  end if;
+
+  select * into player_row
+  from public.players
+  where guild_id = p_guild_id and user_id = p_user_id
+  for update;
+
+  if not found then
+    skip := true;
+    skip_reason := 'not_enrolled';
+  end if;
+
+  if not skip then
+    old_lvl := public.cultivation_level(player_row.cultivation_xp);
+    old_pts := public.cultivation_points(player_row.cultivation_xp);
+  end if;
+
+  if not skip then
+    select max(created_at) into last_reward_at
+    from public.user_activity_log
+    where guild_id = p_guild_id
+      and user_id = p_user_id
+      and event_type = 'chat_reward'
+      and coalesce((payload ->> 'skipped')::boolean, false) = false;
+
+    if last_reward_at is not null
+       and extract(epoch from (now() - last_reward_at)) * 1000 < cooldown_ms then
+      skip := true;
+      skip_reason := 'cooldown';
+    end if;
+
+    if not skip and p_fingerprint is not null and exists (
+      select 1
+      from public.user_activity_log
+      where guild_id = p_guild_id
+        and user_id = p_user_id
+        and event_type = 'chat_reward'
+        and coalesce((payload ->> 'skipped')::boolean, false) = false
+        and payload ->> 'fingerprint' is not null
+        and created_at >= now() - interval '10 minutes'
+        and public.fingerprint_distance(payload ->> 'fingerprint', p_fingerprint) <= 4
+    ) then
+      skip := true;
+      skip_reason := 'duplicate_content';
+    end if;
+  end if;
+
+  if not skip then
+    base_pts := 12;
+    bonus_pts := least(6, greatest(0, (p_unique_chars - 8) / 4))
+      + case when p_sentence_count >= 2 then 1 else 0 end
+      + case when p_is_reply then 1 else 0 end;
+    pts_gain := least(20, base_pts + bonus_pts);
+    orders_gain := 1;
+    new_xp := player_row.cultivation_xp + pts_gain;
+    new_lvl := public.cultivation_level(new_xp);
+    new_pts := public.cultivation_points(new_xp);
+    new_orders := player_row.soul_orders + orders_gain;
+
+    update public.players
+    set cultivation_xp = new_xp,
+        soul_orders = new_orders
+    where guild_id = p_guild_id and user_id = p_user_id;
+  end if;
+
+  activity_payload := jsonb_build_object(
+    'messageId', p_message_id,
+    'fingerprint', p_fingerprint,
+    'cultivationPoints', pts_gain,
+    'soulOrders', orders_gain,
+    'cultivationAfter', coalesce(new_pts, old_pts, 0),
+    'soulOrdersAfter', coalesce(new_orders, player_row.soul_orders, 0),
+    'skipped', skip,
+    'skipReason', skip_reason
+  );
+
+  response_json := jsonb_build_object(
+    'skipped', skip,
+    'skip_reason', skip_reason,
+    'duplicate', false,
+    'cultivation_points', pts_gain,
+    'soul_orders', orders_gain,
+    'new_level', coalesce(new_lvl, old_lvl),
+    'leveled_up', coalesce(new_lvl > old_lvl, false)
+  );
+
+  insert into public.request_receipts
+    (guild_id, event_type, request_id, user_id, result)
+  values
+    (p_guild_id, 'chat_reward', p_message_id, p_user_id, response_json);
+
+  insert into public.user_activity_log
+    (guild_id, user_id, event_type, request_id, payload)
+  values
+    (p_guild_id, p_user_id, 'chat_reward', p_message_id, activity_payload);
+
+  perform public.queue_level_up_events(
+    p_guild_id, p_user_id, old_lvl, new_lvl, new_xp, p_message_id
+  );
+
+  return response_json;
+end;
+$$;
+
+alter table public.guild_config           enable row level security;
+alter table public.players                enable row level security;
+alter table public.hon_khi_catalog        enable row level security;
+alter table public.hon_khi_equipped       enable row level security;
+alter table public.user_hon_khi_collection enable row level security;
+alter table public.user_activity_log      enable row level security;
+alter table public.request_receipts       enable row level security;
+
+revoke all on
+  public.guild_config,
+  public.players,
+  public.hon_khi_catalog,
+  public.hon_khi_equipped,
+  public.user_hon_khi_collection,
+  public.user_activity_log,
+  public.request_receipts
+from public, anon, authenticated;
+
+grant all on
+  public.guild_config,
+  public.players,
+  public.hon_khi_catalog,
+  public.hon_khi_equipped,
+  public.user_hon_khi_collection,
+  public.user_activity_log,
+  public.request_receipts
+to service_role;
+
+revoke execute on function
+  public.fingerprint_distance(text, text),
+  public.cultivation_level(bigint),
+  public.cultivation_points(bigint),
+  public.hon_khi_vault_cost(integer),
+  public.hon_khi_vault_level(bigint),
+  public.hon_khi_tier_rates(integer),
+  public.hon_khi_slot_label(text),
+  public.ensure_guild_config(text, text[]),
+  public.set_reward_channel(text, text, boolean),
+  public.enroll_player(text, text),
+  public.adjust_soul_orders(text, text, integer, text, text, text, integer),
+  public.grant_soul_orders(text, text, integer, text, text, text),
+  public.remove_soul_orders(text, text, integer, text, text, text),
+  public.get_total_hon_khi_rolls(text, text),
+  public.get_player_profile(text, text),
+  public.get_hon_khi_session(text, text),
+  public.get_hon_khi_leaderboard(text, text, integer),
+  public.draw_hon_khi_with_session(text, text, text),
+  public.cleanup_user_activity_log(),
+  public.draw_hon_khi(text, text, text),
+  public.award_chat_message(text, text, text, text, integer, integer, boolean)
+from public, anon, authenticated;
+
+grant execute on function
+  public.fingerprint_distance(text, text),
+  public.cultivation_level(bigint),
+  public.cultivation_points(bigint),
+  public.hon_khi_vault_cost(integer),
+  public.hon_khi_vault_level(bigint),
+  public.hon_khi_tier_rates(integer),
+  public.hon_khi_slot_label(text),
+  public.ensure_guild_config(text, text[]),
+  public.set_reward_channel(text, text, boolean),
+  public.enroll_player(text, text),
+  public.adjust_soul_orders(text, text, integer, text, text, text, integer),
+  public.grant_soul_orders(text, text, integer, text, text, text),
+  public.remove_soul_orders(text, text, integer, text, text, text),
+  public.get_total_hon_khi_rolls(text, text),
+  public.get_player_profile(text, text),
+  public.get_hon_khi_session(text, text),
+  public.get_hon_khi_leaderboard(text, text, integer),
+  public.draw_hon_khi_with_session(text, text, text),
+  public.cleanup_user_activity_log(),
+  public.draw_hon_khi(text, text, text),
+  public.award_chat_message(text, text, text, text, integer, integer, boolean)
+to service_role;
+
+
+
+alter table public.players drop column if exists is_awakened;
+alter table public.voice_reward_buckets enable row level security;
+alter table public.level_up_events enable row level security;
+revoke all on public.voice_reward_buckets, public.level_up_events from public, anon, authenticated;
+grant all on public.voice_reward_buckets, public.level_up_events to service_role;
+revoke execute on function public.enroll_player(text, text), public.set_voice_session(text, text, boolean), public.award_voice_activity(text, text, text), public.claim_level_up_events(integer), public.mark_level_up_event_sent(bigint, text), public.mark_level_up_event_failed(bigint, text, text) from public, anon, authenticated;
+grant execute on function public.enroll_player(text, text), public.set_voice_session(text, text, boolean), public.award_voice_activity(text, text, text), public.claim_level_up_events(integer), public.mark_level_up_event_sent(bigint, text), public.mark_level_up_event_failed(bigint, text, text) to service_role;
+grant execute on function public.queue_level_up_events(text, text, integer, integer, bigint, text) to service_role;
 notify pgrst, 'reload schema';
 
 commit;

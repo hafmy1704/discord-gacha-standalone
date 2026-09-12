@@ -100,3 +100,63 @@ test("reward channel changes use one atomic database RPC", async () => {
     });
   }
 });
+
+
+test("voice session and reward call the atomic RPCs", async () => {
+  const requests = [];
+  const database = createDatabase({
+    url: "https://example.supabase.co",
+    serviceRoleKey: "test-key",
+    fetchImpl: async (url, init) => {
+      requests.push({ url, body: JSON.parse(init.body) });
+      return new Response(JSON.stringify({ updated: true, skipped: false, buckets: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+  await database.setVoiceSession({ guildId: "guild-1", userId: "user-1", active: true });
+  await database.awardVoiceActivity({ guildId: "guild-1", userId: "user-1", channelId: "voice-1" });
+
+  assert.deepEqual(requests, [
+    {
+      url: "https://example.supabase.co/rest/v1/rpc/set_voice_session",
+      body: { p_guild_id: "guild-1", p_user_id: "user-1", p_active: true },
+    },
+    {
+      url: "https://example.supabase.co/rest/v1/rpc/award_voice_activity",
+      body: { p_guild_id: "guild-1", p_user_id: "user-1", p_channel_id: "voice-1" },
+    },
+  ]);
+});
+
+test("chat reward recreates a deleted player before awarding", async () => {
+  const requests = [];
+  const database = createDatabase({
+    url: "https://example.supabase.co",
+    serviceRoleKey: "test-key",
+    fetchImpl: async (url, init) => {
+      requests.push({ url, method: init.method, body: init.body ? JSON.parse(init.body) : null });
+      if (url.includes("/players?")) return new Response(null, { status: 201 });
+      return new Response(JSON.stringify({ skipped: false, cultivation_points: 12 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+  await database.awardChatMessage({
+    guildId: "guild-1",
+    userId: "user-1",
+    messageId: "message-1",
+    fingerprint: null,
+    uniqueCharacters: 12,
+    sentenceCount: 1,
+    isHumanReply: false,
+  });
+
+  assert.equal(requests[0].url, "https://example.supabase.co/rest/v1/players?on_conflict=guild_id%2Cuser_id");
+  assert.deepEqual(requests[0].body, { guild_id: "guild-1", user_id: "user-1" });
+  assert.equal(requests[1].url, "https://example.supabase.co/rest/v1/rpc/award_chat_message");
+});

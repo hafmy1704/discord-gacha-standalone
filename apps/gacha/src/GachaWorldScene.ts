@@ -961,7 +961,7 @@ this.makeSoftImageTexture("world-dragon", "world-dragon-soft");
       const targetScale = this.resultItem.scaleX * 2;
       this.tweens.add({
         targets: this.resultItem,
-        y: this.coreY - this.ringRadius * 1.35,
+        y: this.coreY - this.ringRadius * 0.85,
         alpha: 1,
         scaleX: targetScale,
         scaleY: targetScale,

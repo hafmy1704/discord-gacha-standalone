@@ -8,7 +8,7 @@ Bot Discord + Miniapp Gacha Hồn Khí T1–T10 tích hợp Supabase. Hoàn toà
 Chat → Điểm Tu Vi + Hồn Lệnh → Triệu Dẫn Hồn Khí → Tự trang bị / phân giải → Nâng Bảo Khố
 ```
 
-- **Bot Discord** (`apps/bot`) — Xử lý lệnh slash, chat reward, role Tu Vi, nút Thức Tỉnh
+- **Bot Discord** (`apps/bot`) — Xử lý lệnh slash, chat reward, role Tu Vi/
 - **Miniapp Frontend** (`apps/gacha`) — UI gacha React/Vite/TypeScript với hiệu ứng Phaser WebGL
 - **Supabase Backend** — Toàn bộ logic atomic trong stored procedures; RLS service-role-only
 
@@ -45,7 +45,6 @@ discord-gacha-standalone/
 create table public.players (
   guild_id          text        not null,
   user_id           text        not null,
-  is_awakened       boolean     not null default false,
   cultivation_xp    bigint      not null default 0 check (cultivation_xp >= 0),
   soul_orders       bigint      not null default 0 check (soul_orders >= 0),
   vault_xp          bigint      not null default 0 check (vault_xp >= 0),
@@ -54,7 +53,6 @@ create table public.players (
 );
 ```
 
-- `is_awakened`: đã thức tỉnh hay chưa.
 - `cultivation_xp`: tổng Điểm Tu Vi; cấp và điểm dư tự suy ra.
 - `soul_orders`: số Hồn Lệnh hiện có.
 - `vault_xp`: tổng Hồn Thiết tích lũy; cấp và tiến độ Bảo Khố tự suy ra.
@@ -175,7 +173,7 @@ DISCORD_APPLICATION_ID=Application_ID
 DISCORD_GUILD_ID=Guild_ID_Server
 DISCORD_CLIENT_SECRET=Client_Secret
 WELCOME_CHANNEL_ID=ID_Kênh_Welcome
-SOUL_AWAKENING_CHANNEL_ID=ID_Kênh_Thức_Tỉnh
+LEVEL_UP_CHANNEL_ID=ID_Kênh_Thông_Báo_Lên_Cấp
 SON_MON_CATEGORY_ID=ID_Category_Sơn_Môn
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=service_role_key
@@ -196,10 +194,15 @@ Vào Supabase Dashboard → SQL Editor, chạy theo thứ tự:
 
 ```
 supabase/migrations/001_initial_schema.sql
+supabase/migrations/002_voice_activity_reward.sql
 ```
 
 `001_initial_schema.sql` là schema canonical đầy đủ: chỉ tạo bảng/function/index/trigger, cấu hình RLS/quyền; không chứa câu lệnh xóa dữ liệu hay migration vá. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
 
+Database mới: chạy `001` rồi `002`. Database đã có dữ liệu từ bản cũ: chỉ chạy `002`; migration này giữ XP, lượt quay, Hồn Khí/trang bị/collection, chỉ xóa cột awakening và đổi cách tính level về level 0. Không chạy lại `001` trên production.
+
+
+Voice reward chạy theo session: bot ghi nhận lúc vào voice, quét mỗi phút, cộng đủ từng bucket 10 phút khi còn ở voice. User rời voice được chốt bucket cuối; restart bot không bù thời gian offline. `level_up_events` lưu queue thông báo, retry khi Discord gửi lỗi.
 Sau migration, khởi động bot để seed 120 item catalog từ `equipment_t1_t10_manifest.json`. RPC gacha serialize theo `requestId`, nên retry sau khi mất response không tiêu hao lần hai.
 
 Hoặc dùng Supabase CLI:
@@ -237,7 +240,7 @@ Bot sẽ:
 | `/profile`                      | Mọi người                | Xem Cấp Tu Vi, Hồn Lệnh và trang bị |
 | `/hon-lenh them nguoi-choi so-luong` | Admin                    | Cộng Hồn Lệnh cho người chơi        |
 | `/hon-lenh xoa nguoi-choi so-luong` | Admin                    | Trừ Hồn Lệnh, không cho số dư âm     |
-| `/gacha`                        | Mọi người (đã thức tỉnh) | Mở Activity gacha                   |
+| `/gacha`                        | Mọi thành viên | Mở Activity gacha                   |
 | `/whitelist`                    | Admin                    | Mở bảng bật/tắt kênh thưởng chat    |
 
 ## Công thức game
@@ -249,14 +252,15 @@ Server/Supabase là nguồn tính duy nhất; frontend chỉ hiển thị kết 
 Với tổng `xp = cultivation_xp`, cấp tu vi là cấp cao nhất thỏa điều kiện:
 
 ```text
-L = max { L >= 1 | 50 × L × (L - 1) <= xp }
-cultivationPoints = xp - 50 × L × (L - 1)
-cultivationPointsRequired = 100 × L
-cultivationProgress = round(cultivationPoints / (100 × L), 4)
+L = max { L >= 0 | 50 × L × (L + 1) <= xp }
+cultivationPoints = xp - 50 × L × (L + 1)
+cultivationPointsRequired = 100 × (L + 1)
+cultivationProgress = round(cultivationPoints / (100 × (L + 1)), 4)
 ```
 
 |   Cấp | Role             |
 | ----: | ---------------- |
+|     0 | Tân Sinh         |
 |   1–9 | Hồn Sĩ           |
 | 10–19 | Hồn Sư           |
 | 20–29 | Đại Hồn Sư       |
@@ -290,7 +294,6 @@ Chuẩn hóa dùng NFKC, chữ thường tiếng Việt, loại URL/mention/emoj
 ### 3. Thức tỉnh và admin grant
 
 ```text
-awakeningBonus = 10 Hồn Lệnh
 newSoulOrders = oldSoulOrders + grantAmount
 ```
 

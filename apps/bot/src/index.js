@@ -10,6 +10,8 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { createDatabase } from "./database.js";
 import { createMiniappServer } from "./server.js";
@@ -47,7 +49,6 @@ const REQUIRED_VARS = [
   "DISCORD_GUILD_ID",
   "DISCORD_CLIENT_SECRET",
   "WELCOME_CHANNEL_ID",
-  "SOUL_AWAKENING_CHANNEL_ID",
   "SON_MON_CATEGORY_ID",
   "MINIAPP_SIGNING_SECRET",
   "SUPABASE_URL",
@@ -91,6 +92,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -175,12 +177,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     cleanupTimer.unref?.();
     await database.seedHonKhiCatalog(buildHonKhiCatalog());
     const guild = await readyClient.guilds.fetch(GUILD_ID);
+    await initializeVoiceSessions(guild);
+    await flushLevelUpEvents();
     await guild.commands.set(COMMANDS);
-    try {
-      await ensureAwakeningButton(guild);
-    } catch (error) {
-      console.error("awakening channel setup failed", error.message);
-    }
     discordReady = true;
     console.log(`✅ Bot ready: ${readyClient.user.tag} | server ${HOST}:${PORT}`);
   } catch (error) {
@@ -195,19 +194,11 @@ client.once(Events.ClientReady, async (readyClient) => {
 client.on(Events.GuildMemberAdd, async (member) => {
   if (member.guild.id !== GUILD_ID || member.user.bot) return;
   try {
-    const result = await database.enrollPlayer({
+    await database.enrollPlayer({
       guildId: GUILD_ID,
       userId: member.id,
     });
-    if (result.is_awakened) {
-      const profile = await database.getProfile({
-        guildId: GUILD_ID,
-        userId: member.id,
-      });
-      await syncCultivationRole(member, profile?.cultivationLevel ?? 1);
-    } else {
-      await assignRoleByName(member, BEGINNER_ROLE_NAME);
-    }
+    await assignRoleByName(member, BEGINNER_ROLE_NAME);
 
     const welcomeChannel = await member.guild.channels.fetch(
       process.env.WELCOME_CHANNEL_ID,
@@ -225,7 +216,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
           .setAuthor({ name: "THIÊN CƠ TÔNG · HƯỚNG DẪN NHẬP MÔN" })
           .setTitle("⚡ CHÀO MỪNG TÂN SINH")
           .setDescription(
-            "Ngươi đã được Thiên Cơ Tông ghi danh là **Tân Sinh**. Hãy hoàn tất nghi thức nhập môn để đánh thức Võ Hồn, khai mở căn cơ và bước lên con đường Hồn Sư.",
+            "Ngươi đã được Thiên Cơ Tông ghi danh là **Tân Sinh**. Hãy tích lũy Điểm Tu Vi để từng bước tiến lên các cảnh giới cao hơn.",
           )
           .addFields(
             {
@@ -233,8 +224,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
               value: `${link("1543687935663018124", "Pháp Tắc")} để hiểu rõ quy củ, giới luật và con đường tu luyện tại tông môn.`,
             },
             {
-              name: "`02` 🌀 Thức Tỉnh Võ Hồn",
-              value: `${link("1544089891934052583", "Khai Mở Võ Hồn")} · Đọc cẩm nang, chọn hướng tu luyện và đánh thức căn cơ của một Hồn Sư.`,
+              name: "`02` ✨ Con Đường Tu Luyện",
+              value: `${link("1543688097966063761", "Trò Chuyện")} để nhận Điểm Tu Vi và Hồn Lệnh, tiến cấp từ Tân Sinh lên Hồn Sĩ.`,
             },
           ),
         new EmbedBuilder()
@@ -261,87 +252,28 @@ client.on(Events.GuildMemberAdd, async (member) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== GUILD_ID) return;
   try {
-    // Button: Thức Tỉnh
-    if (interaction.isButton() && interaction.customId === "thuc-tinh-event") {
-      const result = await database.enrollPlayer({
-        guildId: GUILD_ID,
-        userId: interaction.user.id,
-        awaken: true,
-      });
-      const profile = await database.getProfile({
-        guildId: GUILD_ID,
-        userId: interaction.user.id,
-      });
-      if (profile)
-        await syncCultivationRole(interaction.member, profile.cultivationLevel);
-      if (result.already_awakened) {
-        await interaction.reply({
-          content: "Ngươi đã thức tỉnh rồi.",
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
-      await interaction.reply({
-        content:
-          `🌀 **Thức tỉnh thành công.** Từ đây, con đường tu vi chính thức khai mở.\n\n` +
-          `Ngươi đã khai mở quyền **Luận Đạo**, có thể nhận **Điểm Tu Vi**, **Hồn Lệnh**, đồng thời được phong **Hồn Sĩ**.\n` +
-          `Nhận **10 Hồn Lệnh** làm lễ vật thức tỉnh.\n\n` +
-          `Dùng lệnh \`/gacha\` để khai mở **Linh Trận Triệu Dẫn**.`,
-        flags: MessageFlags.Ephemeral,
-      });
+    if (interaction.isButton() && interaction.customId.startsWith("whitelist-page:")) {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return;
+      const page = Number(interaction.customId.split(":")[1]);
+      await interaction.update(await buildWhitelistPanel(interaction.guild, page));
       return;
     }
 
-    if (
-      interaction.isButton() &&
-      interaction.customId.startsWith("whitelist-toggle:")
-    ) {
-      if (
-        !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
-      ) {
-        await interaction.reply({
-          content: "Chỉ **Administrator** được dùng whitelist.",
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
-      const [, channelId, state] = interaction.customId.split(":");
-      const enabled = state !== "on";
-      const components = interaction.message.components.map((row) =>
-        new ActionRowBuilder().addComponents(
-          row.components.map((button) => {
-            const [, id, currentState] = button.customId.split(":");
-            const nextState =
-              id === channelId ? enabled : currentState === "on";
-            const label = button.label.replace(/^[✅⬜]\s*/u, "");
-            return new ButtonBuilder()
-              .setCustomId(`whitelist-toggle:${id}:${nextState ? "on" : "off"}`)
-              .setLabel(`${nextState ? "✅" : "⬜"} ${label}`)
-              .setStyle(
-                nextState ? ButtonStyle.Success : ButtonStyle.Secondary,
-              );
-          }),
-        ),
-      );
-      await interaction.update({
-        content:
-          "**Whitelist nhận Điểm Tu Vi + Hồn Lệnh**\nBấm nút để bật/tắt từng kênh.",
-        components,
-      });
-      whitelistMutation = whitelistMutation
-        .then(async () => {
-          const config = await database.getGuildRewardConfig(GUILD_ID);
-          const selected = config?.channelIds.has(channelId) ?? false;
-          if (selected === enabled) return;
-          return enabled
-            ? database.addRewardChannel({ guildId: GUILD_ID, channelId })
-            : database.removeRewardChannel({ guildId: GUILD_ID, channelId });
-        })
-        .catch((error) =>
-          console.error("whitelist update failed", error.message),
-        );
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("whitelist-select:")) {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return;
+      const page = Number(interaction.customId.split(":")[1]);
+      const channels = await listRewardChannels(interaction.guild);
+      const pageChannels = channels.slice(page * 25, page * 25 + 25);
+      const selected = new Set(interaction.values);
+      await Promise.all(pageChannels.map((channel) =>
+        selected.has(channel.id)
+          ? database.addRewardChannel({ guildId: GUILD_ID, channelId: channel.id })
+          : database.removeRewardChannel({ guildId: GUILD_ID, channelId: channel.id }),
+      ));
+      await interaction.update(await buildWhitelistPanel(interaction.guild, page));
       return;
     }
+
     if (!interaction.isChatInputCommand()) return;
 
     // /gacha
@@ -361,13 +293,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       if (profile && target.id === interaction.user.id && interaction.member)
         await syncCultivationRole(interaction.member, profile.cultivationLevel);
-      const equipment = profile?.isAwakened
+      const equipment = profile
         ? await database.getProfileEquipment({
             guildId: GUILD_ID,
             userId: target.id,
           })
         : [];
-      const ranking = profile?.isAwakened
+      const ranking = profile
         ? await database.getServerPowerRank({
             guildId: GUILD_ID,
             userId: target.id,
@@ -460,7 +392,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       error.code === 50234 || error.code === 50231
         ? "Activity gacha chưa được bật trong Discord Developer Portal. Vào Activities > Settings > Supported Platforms và bật Web."
         : msg === "not_enrolled"
-          ? "Người chơi chưa thức tỉnh."
+          ? "Người chơi chưa có profile."
           : msg === "invalid_amount"
             ? "Số Hồn Lệnh phải từ 1 đến 1.000.000."
             : msg === "insufficient_soul_orders"
@@ -517,14 +449,9 @@ client.on(Events.MessageCreate, async (message) => {
       isHumanReply,
     });
 
-    if (!result.skipped && result.leveled_up && message.member) {
-      const profile = await database.getProfile({
-        guildId: GUILD_ID,
-        userId: message.author.id,
-      });
-      if (profile)
-        await syncCultivationRole(message.member, profile.cultivationLevel);
-    }
+    if (!result.skipped && result.leveled_up && message.member)
+      await syncCultivationRole(message.member, result.new_level);
+    if (!result.skipped) await flushLevelUpEvents();
   } catch (error) {
     console.error("chat reward failed", {
       messageId: message.id,
@@ -533,15 +460,76 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
+const VOICE_SCAN_INTERVAL_MS = 60 * 1000;
+
+async function initializeVoiceSessions(guild) {
+  const config = await database.getGuildRewardConfig(guild.id);
+  const selected = config?.channelIds ?? new Set();
+  const requests = [];
+  for (const state of guild.voiceStates.cache.values()) {
+    if (!state.channelId || state.member?.user.bot) continue;
+    requests.push(database.setVoiceSession({ guildId: guild.id, userId: state.id, active: selected.has(state.channelId) }));
+  }
+  await Promise.allSettled(requests);
+}
+
+async function awardVoiceMember(guild, userId, channelId, selectedChannels) {
+  if (selectedChannels && !selectedChannels.has(channelId)) return;
+  const result = await database.awardVoiceActivity({ guildId: guild.id, userId, channelId });
+  if (!result?.skipped && result?.leveled_up) {
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (member) await syncCultivationRole(member, result.new_level);
+  }
+  if (!result?.skipped) await flushLevelUpEvents();
+}
+
+async function scanVoice() {
+  const requests = [];
+  for (const guild of client.guilds.cache.values()) {
+    const config = await database.getGuildRewardConfig(guild.id);
+    const selected = config?.channelIds ?? new Set();
+    for (const state of guild.voiceStates.cache.values()) {
+      if (!state.channelId || state.member?.user.bot || !selected.has(state.channelId)) continue;
+      requests.push(awardVoiceMember(guild, state.id, state.channelId, selected).catch((error) => console.error("voice reward failed", { userId: state.id, error: error.message })));
+    }
+  }
+  await Promise.allSettled(requests);
+}
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  if (oldState.member?.user.bot || newState.member?.user.bot) return;
+  if (oldState.channelId === newState.channelId) return;
+  try {
+    const config = await database.getGuildRewardConfig(newState.guild.id);
+    const selected = config?.channelIds ?? new Set();
+    if (oldState.channelId) await awardVoiceMember(newState.guild, newState.id, oldState.channelId, selected);
+    await database.setVoiceSession({ guildId: newState.guild.id, userId: newState.id, active: Boolean(newState.channelId && selected.has(newState.channelId)) });
+  } catch (error) {
+    console.error("voice session update failed", error.message);
+  }
+});
+
+client.once(Events.ClientReady, () => {
+  const voiceTimer = setInterval(() => {
+    scanVoice().catch((error) => console.error("voice scan failed", error.message));
+  }, VOICE_SCAN_INTERVAL_MS);
+  voiceTimer.unref?.();
+  const levelEventTimer = setInterval(() => {
+    flushLevelUpEvents().catch((error) =>
+      console.error("level-up queue failed", error.message),
+    );
+  }, 30 * 1000);
+  levelEventTimer.unref?.();
+});
+
 async function buildProfileCard({ user, profile, equipment, ranking }) {
   const root = fileURLToPath(new URL("../../gacha/public/", import.meta.url));
-  const level = profile?.cultivationLevel ?? 1;
-  const awakened = Boolean(profile?.isAwakened);
+  const level = profile?.cultivationLevel ?? 0;
 
   const points = profile?.cultivationPoints ?? 0;
   const required = profile?.cultivationPointsRequired ?? 100;
   const soulOrders = profile?.soulOrders ?? 0;
-  const role = awakened ? cultivationRoleName(level) : "Chưa thức tỉnh";
+  const role = cultivationRoleName(level);
   const combatPower = profile?.power ?? 0;
   const displayName = escapeXml(
     String(user.globalName ?? user.displayName ?? user.username).slice(0, 27),
@@ -671,41 +659,53 @@ function escapeXml(value) {
       })[character],
   );
 }
-async function buildWhitelistPanel(guild) {
+async function listRewardChannels(guild) {
+  return [...(await guild.channels.fetch()).values()]
+    .filter((channel) => channel?.type === 0 || channel?.isVoiceBased?.())
+    .sort((a, b) => {
+      const categoryPosition = (a.parent?.rawPosition ?? -1) - (b.parent?.rawPosition ?? -1);
+      return categoryPosition || a.rawPosition - b.rawPosition || a.name.localeCompare(b.name, "vi");
+    });
+}
+
+async function buildWhitelistPanel(guild, page = 0) {
   const config = await database.getGuildRewardConfig(GUILD_ID);
   const selected = config?.channelIds ?? new Set();
-  const channels = [...(await guild.channels.fetch()).values()]
-    .filter((channel) => channel?.type === 0)
-    .sort((a, b) => a.rawPosition - b.rawPosition)
-    .slice(0, 25);
-  const rows = [];
-  for (let index = 0; index < channels.length; index += 5) {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        channels.slice(index, index + 5).map((channel) =>
-          new ButtonBuilder()
-            .setCustomId(
-              `whitelist-toggle:${channel.id}:${selected.has(channel.id) ? "on" : "off"}`,
-            )
-            .setLabel(
-              `${selected.has(channel.id) ? "✅" : "⬜"} #${channel.name}`.slice(
-                0,
-                80,
-              ),
-            )
-            .setStyle(
-              selected.has(channel.id)
-                ? ButtonStyle.Success
-                : ButtonStyle.Secondary,
-            ),
-        ),
-      ),
+  const channels = await listRewardChannels(guild);
+  const pageCount = Math.max(1, Math.ceil(channels.length / 25));
+  const currentPage = Math.max(0, Math.min(page, pageCount - 1));
+  const pageChannels = channels.slice(currentPage * 25, currentPage * 25 + 25);
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("whitelist-select:" + currentPage)
+    .setPlaceholder("Chọn kênh nhận thưởng")
+    .setMinValues(0)
+    .setMaxValues(Math.max(1, pageChannels.length));
+  for (const channel of pageChannels) {
+    const category = channel.parent?.name ? channel.parent.name + " / " : "Ngoài category / ";
+    const kind = channel.isVoiceBased?.() ? "Voice" : "Chat";
+    menu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel((category + channel.name).slice(0, 100))
+        .setValue(channel.id)
+        .setDescription((kind + " · " + (selected.has(channel.id) ? "Đang bật" : "Đang tắt")).slice(0, 100))
+        .setDefault(selected.has(channel.id)),
     );
   }
+  const navigation = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("whitelist-page:" + (currentPage - 1))
+      .setLabel("‹ Trang trước")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage === 0),
+    new ButtonBuilder()
+      .setCustomId("whitelist-page:" + (currentPage + 1))
+      .setLabel("Trang sau ›")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage >= pageCount - 1),
+  );
   return {
-    content:
-      "**Whitelist nhận Điểm Tu Vi + Hồn Lệnh**\nBấm nút để bật/tắt từng kênh.",
-    components: rows,
+    content: "**Whitelist nhận EXP chat và voice**\nTrang " + (currentPage + 1) + "/" + pageCount + " · Kênh voice được chọn sẽ nhận thưởng treo voice.",
+    components: [new ActionRowBuilder().addComponents(menu), navigation],
   };
 }
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -716,6 +716,51 @@ async function assignRoleByName(member, roleName) {
   if (!role) throw new Error(`Missing Discord role: ${roleName}`);
   await member.roles.add(role);
   return role;
+}
+
+async function notifyLevelUp(member, level) {
+  const channelId = process.env.LEVEL_UP_CHANNEL_ID?.trim();
+  if (!channelId || !member?.guild) return false;
+  try {
+    const channel = await member.guild.channels.fetch(channelId);
+    if (!channel?.isTextBased())
+      throw new Error("LEVEL_UP_CHANNEL_ID must point to a text channel");
+    await channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xf59e0b)
+          .setTitle("✨ Đột Phá Cảnh Giới")
+          .setDescription("Chúc mừng <@" + member.id + "> đã đạt **Cấp " + level + "**!")
+          .setThumbnail(member.user.displayAvatarURL({ size: 128 }))
+          .setFooter({ text: "Thiên Cơ Tông · Tu vi tiến thêm một bước" }),
+      ],
+      allowedMentions: { users: [member.id] },
+    });
+    return true;
+  } catch (error) {
+    console.error("level-up notification failed", { userId: member.id, error: error.message });
+    return false;
+  }
+}
+
+async function flushLevelUpEvents() {
+  if (!process.env.LEVEL_UP_CHANNEL_ID?.trim()) return;
+  const events = await database.claimLevelUpEvents(50);
+  const guild = await client.guilds.fetch(GUILD_ID);
+  for (const event of events ?? []) {
+    const eventId = event.id;
+    const claimToken = event.claim_token ?? event.claimToken;
+    const member = await guild.members.fetch(event.user_id ?? event.userId).catch(() => null);
+    if (!member) {
+      await database.markLevelUpEventSent({ eventId, claimToken });
+      continue;
+    }
+    const sent = await notifyLevelUp(member, Number(event.level));
+    if (sent)
+      await database.markLevelUpEventSent({ eventId, claimToken });
+    else
+      await database.markLevelUpEventFailed({ eventId, claimToken, error: "notification_failed" });
+  }
 }
 
 async function syncCultivationRole(member, level) {
@@ -738,74 +783,6 @@ async function syncCultivationRole(member, level) {
     await member.roles.add(targetRole);
 }
 
-async function ensureAwakeningButton(guild) {
-  const awakeningChannel = await guild.channels.fetch(
-    process.env.SOUL_AWAKENING_CHANNEL_ID,
-  );
-  const category = await guild.channels.fetch(process.env.SON_MON_CATEGORY_ID);
-
-  if (!awakeningChannel?.isTextBased())
-    throw new Error("SOUL_AWAKENING_CHANNEL_ID must point to a text channel");
-  if (!category || category.type !== 4)
-    throw new Error("SON_MON_CATEGORY_ID must point to a category");
-
-  if (awakeningChannel.parentId !== category.id) {
-    try {
-      await awakeningChannel.setParent(category.id, { lockPermissions: false });
-    } catch (error) {
-      console.error("awakening channel move failed", error.message);
-    }
-  }
-
-  const welcomeChannel = await guild.channels.fetch(
-    process.env.WELCOME_CHANNEL_ID,
-  );
-  if (!welcomeChannel?.isTextBased())
-    throw new Error("WELCOME_CHANNEL_ID must point to a text channel");
-  const payload = {
-    embeds: [
-      new EmbedBuilder()
-        .setColor(0x6e56cf)
-        .setTitle("🌀  THỨC TỈNH  ·  SƠN MÔN")
-        .setDescription(
-          "> *Linh môn khai mở. Người hữu duyên, hãy bước qua vòng xoáy và đánh thức căn cơ của mình.*\n\n" +
-            "**Thức Tỉnh** là nghi thức ghi danh vào con đường tu hành. Sau khi thức tỉnh, " +
-            "hồ sơ của ngươi được lưu lại để chuẩn bị cho hành trình phía trước.",
-        ),
-    ],
-    components: [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("thuc-tinh-event")
-          .setLabel("Thức Tỉnh")
-          .setEmoji("🌀")
-          .setStyle(ButtonStyle.Primary),
-      ),
-    ],
-  };
-
-  const messageId = await database.getWelcomeMessageId(guild.id);
-  const existing = messageId
-    ? await awakeningChannel.messages.fetch(messageId).catch(() => null)
-    : null;
-
-  if (existing) {
-    await existing.edit(payload);
-  } else {
-    if (messageId) {
-      const misplaced = await welcomeChannel.messages
-        .fetch(messageId)
-        .catch(() => null);
-      if (misplaced?.author.id === guild.client.user.id)
-        await misplaced.delete().catch(() => {});
-    }
-    const sent = await awakeningChannel.send(payload);
-    await database.setWelcomeMessageId({
-      guildId: guild.id,
-      messageId: sent.id,
-    });
-  }
-}
 // ── Startup & shutdown ────────────────────────────────────────────────────────
 
 async function shutdown(signal, exitCode = 0) {
