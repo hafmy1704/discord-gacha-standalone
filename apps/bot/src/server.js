@@ -409,7 +409,6 @@ function publicErrorCode(message) {
     "invalid launch token",
     "expired launch token",
     "not_enrolled",
-    "not_awakened",
     "gacha_empty",
     "gacha_cooldown",
     "insufficient_soul_orders",
@@ -431,7 +430,7 @@ function publicErrorCode(message) {
 function errorStatus(message) {
   if (message === "invalid launch token" || message === "expired launch token")
     return 401;
-  if (["csrf_rejected", "not_enrolled", "not_awakened"].includes(message))
+  if (["csrf_rejected", "not_enrolled"].includes(message))
     return 403;
   if (message === "unsupported_media_type") return 415;
   if (message === "request_too_large") return 413;

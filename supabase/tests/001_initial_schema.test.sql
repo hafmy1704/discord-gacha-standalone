@@ -8,13 +8,13 @@ declare
   threshold bigint;
   rate_total numeric;
 begin
-  if public.cultivation_level(2147418100::bigint) <> 6554 then
+  if public.cultivation_level(2147418100::bigint) <> 6553 then
     raise exception 'cultivation boundary level mismatch';
   end if;
   if public.cultivation_points(2147418100::bigint) <> 0 then
     raise exception 'cultivation boundary points mismatch';
   end if;
-  if public.cultivation_level(9223372036854775807::bigint) <> 429496730 then
+  if public.cultivation_level(9223372036854775807::bigint) <> 429496729 then
     raise exception 'maximum cultivation level mismatch';
   end if;
   if public.hon_khi_vault_level(9223372036854775807::bigint) <> 57 then
@@ -60,8 +60,8 @@ begin
   )
   select count(*) into violations
   from evaluated
-  where xp::numeric < 50::numeric * level_number * (level_number - 1)
-     or xp::numeric >= 50::numeric * level_number * (level_number + 1);
+  where xp::numeric < 50::numeric * level_number * (level_number + 1)
+     or xp::numeric >= 50::numeric * (level_number + 1) * (level_number + 2);
 
   if violations <> 0 then
     raise exception 'cultivation property violations: %', violations;
@@ -121,7 +121,7 @@ begin
 end;
 $$;
 
-select public.enroll_player('audit-guild', 'audit-user', true);
+select public.enroll_player('audit-guild', 'audit-user');
 
 do $$
 declare
