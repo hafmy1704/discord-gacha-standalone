@@ -22,6 +22,7 @@ import {
   cultivationRoleName,
   cultivationRoleNames,
 } from "./roles.js";
+import { voiceTransitionPlan } from "./voice-rewards.js";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
@@ -49,6 +50,7 @@ const REQUIRED_VARS = [
   "DISCORD_GUILD_ID",
   "DISCORD_CLIENT_SECRET",
   "WELCOME_CHANNEL_ID",
+  "LEVEL_UP_CHANNEL_ID",
   "SON_MON_CATEGORY_ID",
   "MINIAPP_SIGNING_SECRET",
   "SUPABASE_URL",
@@ -262,15 +264,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith("whitelist-select:")) {
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return;
       const page = Number(interaction.customId.split(":")[1]);
-      const channels = await listRewardChannels(interaction.guild);
-      const pageChannels = channels.slice(page * 25, page * 25 + 25);
-      const selected = new Set(interaction.values);
-      await Promise.all(pageChannels.map((channel) =>
-        selected.has(channel.id)
-          ? database.addRewardChannel({ guildId: GUILD_ID, channelId: channel.id })
-          : database.removeRewardChannel({ guildId: GUILD_ID, channelId: channel.id }),
-      ));
-      await interaction.update(await buildWhitelistPanel(interaction.guild, page));
+      await interaction.deferUpdate();
+      const mutation = whitelistMutation.then(async () => {
+        const config = await database.getGuildRewardConfig(GUILD_ID);
+        const previouslySelected = config?.channelIds ?? new Set();
+        const channels = await listRewardChannels(interaction.guild);
+        const pageChannels = channels.slice(page * 25, page * 25 + 25);
+        const selectedOnPage = new Set(interaction.values);
+        await Promise.all(pageChannels.map((channel) => updateRewardChannel({
+          guild: interaction.guild,
+          channel,
+          wasEnabled: previouslySelected.has(channel.id),
+          enabled: selectedOnPage.has(channel.id),
+        })));
+        await interaction.editReply(await buildWhitelistPanel(interaction.guild, page));
+      });
+      whitelistMutation = mutation.catch(() => {});
+      await mutation;
       return;
     }
 
@@ -476,7 +486,7 @@ async function initializeVoiceSessions(guild) {
 async function awardVoiceMember(guild, userId, channelId, selectedChannels) {
   if (selectedChannels && !selectedChannels.has(channelId)) return;
   const result = await database.awardVoiceActivity({ guildId: guild.id, userId, channelId });
-  if (!result?.skipped && result?.leveled_up) {
+  if (!result?.skipped && (result?.leveled_up || Number(result?.new_level) === 0)) {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (member) await syncCultivationRole(member, result.new_level);
   }
@@ -484,26 +494,38 @@ async function awardVoiceMember(guild, userId, channelId, selectedChannels) {
 }
 
 async function scanVoice() {
+  const guild = client.guilds.cache.get(GUILD_ID);
+  if (!guild) return;
   const requests = [];
-  for (const guild of client.guilds.cache.values()) {
-    const config = await database.getGuildRewardConfig(guild.id);
-    const selected = config?.channelIds ?? new Set();
-    for (const state of guild.voiceStates.cache.values()) {
-      if (!state.channelId || state.member?.user.bot || !selected.has(state.channelId)) continue;
-      requests.push(awardVoiceMember(guild, state.id, state.channelId, selected).catch((error) => console.error("voice reward failed", { userId: state.id, error: error.message })));
-    }
+  const config = await database.getGuildRewardConfig(GUILD_ID);
+  const selected = config?.channelIds ?? new Set();
+  for (const state of guild.voiceStates.cache.values()) {
+    if (!state.channelId || state.member?.user.bot || !selected.has(state.channelId)) continue;
+    requests.push(awardVoiceMember(guild, state.id, state.channelId, selected).catch((error) => console.error("voice reward failed", { userId: state.id, error: error.message })));
   }
   await Promise.allSettled(requests);
 }
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  if (newState.guild.id !== GUILD_ID) return;
   if (oldState.member?.user.bot || newState.member?.user.bot) return;
   if (oldState.channelId === newState.channelId) return;
   try {
-    const config = await database.getGuildRewardConfig(newState.guild.id);
+    const config = await database.getGuildRewardConfig(GUILD_ID);
     const selected = config?.channelIds ?? new Set();
-    if (oldState.channelId) await awardVoiceMember(newState.guild, newState.id, oldState.channelId, selected);
-    await database.setVoiceSession({ guildId: newState.guild.id, userId: newState.id, active: Boolean(newState.channelId && selected.has(newState.channelId)) });
+    const plan = voiceTransitionPlan({
+      oldChannelId: oldState.channelId,
+      newChannelId: newState.channelId,
+      selectedChannels: selected,
+    });
+    if (plan.awardOldChannel)
+      await awardVoiceMember(newState.guild, newState.id, oldState.channelId, selected);
+    if (plan.activeUpdate !== null)
+      await database.setVoiceSession({
+        guildId: GUILD_ID,
+        userId: newState.id,
+        active: plan.activeUpdate,
+      });
   } catch (error) {
     console.error("voice session update failed", error.message);
   }
@@ -668,6 +690,40 @@ async function listRewardChannels(guild) {
     });
 }
 
+function voiceStatesInChannel(guild, channelId) {
+  return [...guild.voiceStates.cache.values()].filter(
+    (state) => state.channelId === channelId && !state.member?.user.bot,
+  );
+}
+
+async function updateRewardChannel({ guild, channel, wasEnabled, enabled }) {
+  if (wasEnabled === enabled) return;
+  const isVoice = Boolean(channel.isVoiceBased?.());
+  const states = isVoice ? voiceStatesInChannel(guild, channel.id) : [];
+
+  if (wasEnabled && !enabled) {
+    for (const state of states) {
+      await awardVoiceMember(guild, state.id, channel.id, new Set([channel.id]));
+      await database.setVoiceSession({
+        guildId: GUILD_ID,
+        userId: state.id,
+        active: false,
+      });
+    }
+    await database.removeRewardChannel({ guildId: GUILD_ID, channelId: channel.id });
+    return;
+  }
+
+  await database.addRewardChannel({ guildId: GUILD_ID, channelId: channel.id });
+  for (const state of states) {
+    await database.setVoiceSession({
+      guildId: GUILD_ID,
+      userId: state.id,
+      active: true,
+    });
+  }
+}
+
 async function buildWhitelistPanel(guild, page = 0) {
   const config = await database.getGuildRewardConfig(GUILD_ID);
   const selected = config?.channelIds ?? new Set();
@@ -718,7 +774,7 @@ async function assignRoleByName(member, roleName) {
   return role;
 }
 
-async function notifyLevelUp(member, level) {
+async function notifyLevelUp(member, level, eventId) {
   const channelId = process.env.LEVEL_UP_CHANNEL_ID?.trim();
   if (!channelId || !member?.guild) return false;
   try {
@@ -726,6 +782,8 @@ async function notifyLevelUp(member, level) {
     if (!channel?.isTextBased())
       throw new Error("LEVEL_UP_CHANNEL_ID must point to a text channel");
     await channel.send({
+      nonce: `level-${eventId}`,
+      enforceNonce: true,
       embeds: [
         new EmbedBuilder()
           .setColor(0xf59e0b)
@@ -755,7 +813,7 @@ async function flushLevelUpEvents() {
       await database.markLevelUpEventSent({ eventId, claimToken });
       continue;
     }
-    const sent = await notifyLevelUp(member, Number(event.level));
+    const sent = await notifyLevelUp(member, Number(event.level), eventId);
     if (sent)
       await database.markLevelUpEventSent({ eventId, claimToken });
     else

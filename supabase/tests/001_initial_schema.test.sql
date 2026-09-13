@@ -124,6 +124,124 @@ $$;
 select public.enroll_player('audit-guild', 'audit-user');
 
 do $$
+begin
+  if public.cultivation_level(0) <> 0
+     or public.cultivation_level(99) <> 0
+     or public.cultivation_level(100) <> 1 then
+    raise exception 'level zero/one threshold mismatch';
+  end if;
+end;
+$$;
+
+select public.enroll_player('audit-guild', 'voice-user');
+
+do $$
+declare
+  response jsonb;
+begin
+  response := public.award_voice_activity(
+    'audit-guild', 'voice-auto-user', 'voice-channel'
+  );
+  if response ->> 'skip_reason' <> 'session_started'
+     or not exists (
+       select 1 from public.players
+       where guild_id = 'audit-guild' and user_id = 'voice-auto-user'
+     ) then
+    raise exception 'voice reward did not recover a missing player: %', response;
+  end if;
+end;
+$$;
+
+do $$
+declare
+  first_result jsonb;
+  replay_result jsonb;
+  xp_after bigint;
+  orders_after bigint;
+begin
+  perform public.set_voice_session('audit-guild', 'voice-user', true);
+  update public.players
+  set last_voice_reward_at = now() - interval '20 minutes 1 second'
+  where guild_id = 'audit-guild' and user_id = 'voice-user';
+
+  first_result := public.award_voice_activity(
+    'audit-guild', 'voice-user', 'voice-channel'
+  );
+  replay_result := public.award_voice_activity(
+    'audit-guild', 'voice-user', 'voice-channel'
+  );
+  select cultivation_xp, soul_orders into xp_after, orders_after
+  from public.players
+  where guild_id = 'audit-guild' and user_id = 'voice-user';
+
+  if first_result ->> 'buckets' <> '2'
+     or replay_result ->> 'buckets' <> '0'
+     or xp_after <> 20
+     or orders_after <> 2 then
+    raise exception 'voice bucket accounting mismatch: first %, replay %, xp %, orders %',
+      first_result, replay_result, xp_after, orders_after;
+  end if;
+end;
+$$;
+
+select public.enroll_player('audit-guild', 'voice-level-user');
+
+do $$
+declare
+  reward_result jsonb;
+begin
+  update public.players
+  set cultivation_xp = 90,
+      last_voice_reward_at = now() - interval '10 minutes 1 second'
+  where guild_id = 'audit-guild' and user_id = 'voice-level-user';
+
+  reward_result := public.award_voice_activity(
+    'audit-guild', 'voice-level-user', 'voice-channel'
+  );
+  if reward_result ->> 'new_level' <> '1'
+     or reward_result ->> 'leveled_up' <> 'true'
+     or not exists (
+       select 1 from public.level_up_events
+       where guild_id = 'audit-guild'
+         and user_id = 'voice-level-user'
+         and level = 1
+     ) then
+    raise exception 'voice level-up was not durably queued: %', reward_result;
+  end if;
+end;
+$$;
+
+do $$
+declare
+  claimed jsonb;
+  claimed_event jsonb;
+  event_id bigint;
+  claim_token text;
+  wrong_ack boolean;
+  correct_ack boolean;
+  final_status text;
+begin
+  claimed := public.claim_level_up_events(10);
+  select entry into claimed_event
+  from jsonb_array_elements(claimed) entry
+  where entry ->> 'user_id' = 'voice-level-user';
+  event_id := (claimed_event ->> 'id')::bigint;
+  claim_token := claimed_event ->> 'claim_token';
+  wrong_ack := public.mark_level_up_event_sent(event_id, 'wrong-token');
+  correct_ack := public.mark_level_up_event_sent(event_id, claim_token);
+  select status into final_status
+  from public.level_up_events where id = event_id;
+
+  if event_id is null
+     or wrong_ack
+     or not correct_ack
+     or final_status <> 'sent' then
+    raise exception 'level event claim/acknowledgement mismatch: %', claimed;
+  end if;
+end;
+$$;
+
+do $$
 declare
   first_result jsonb;
   replay_result jsonb;
@@ -298,11 +416,35 @@ begin
       and relkind = 'r'
       and relname in (
         'guild_config', 'players', 'hon_khi_catalog', 'hon_khi_equipped',
-        'user_hon_khi_collection', 'user_activity_log', 'request_receipts'
+        'user_hon_khi_collection', 'user_activity_log', 'request_receipts',
+        'voice_reward_buckets', 'level_up_events'
       )
       and not relrowsecurity
   ) then
     raise exception 'RLS disabled on protected table';
+  end if;
+
+  if has_function_privilege(
+       'anon',
+       'public.queue_level_up_events(text,text,integer,integer,bigint,text)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.queue_level_up_events(text,text,integer,integer,bigint,text)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.award_voice_activity(text,text,text)',
+       'EXECUTE'
+     )
+     or not has_function_privilege(
+       'service_role',
+       'public.award_voice_activity(text,text,text)',
+       'EXECUTE'
+     ) then
+    raise exception 'voice and level-event RPC privileges are not service-role-only';
   end if;
 end;
 $$;

@@ -4,6 +4,7 @@ import { cultivationRoleName } from "./roles.js";
 
 test("cultivation roles use the corrected level bands", () => {
   const cases = [
+    [0, "Tân Sinh"],
     [1, "Hồn Sĩ"],
     [9, "Hồn Sĩ"],
     [10, "Hồn Sư"],
@@ -29,4 +30,7 @@ test("cultivation roles use the corrected level bands", () => {
 
   for (const [level, expectedRole] of cases)
     assert.equal(cultivationRoleName(level), expectedRole);
+
+  assert.throws(() => cultivationRoleName(-1), /invalid cultivation level/);
+  assert.throws(() => cultivationRoleName(1.5), /invalid cultivation level/);
 });

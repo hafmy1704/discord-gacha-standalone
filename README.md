@@ -8,7 +8,7 @@ Bot Discord + Miniapp Gacha Hồn Khí T1–T10 tích hợp Supabase. Hoàn toà
 Chat → Điểm Tu Vi + Hồn Lệnh → Triệu Dẫn Hồn Khí → Tự trang bị / phân giải → Nâng Bảo Khố
 ```
 
-- **Bot Discord** (`apps/bot`) — Xử lý lệnh slash, chat reward, role Tu Vi/
+- **Bot Discord** (`apps/bot`) — Xử lý lệnh slash, chat/voice reward, role Tu Vi và thông báo lên cấp
 - **Miniapp Frontend** (`apps/gacha`) — UI gacha React/Vite/TypeScript với hiệu ứng Phaser WebGL
 - **Supabase Backend** — Toàn bộ logic atomic trong stored procedures; RLS service-role-only
 
@@ -19,7 +19,8 @@ discord-gacha-standalone/
 ├── .env.example
 ├── supabase/
 │   └── migrations/
-│       └── 001_initial_schema.sql                # Canonical create-only schema
+│       ├── 001_initial_schema.sql  # Schema nền cho database mới
+│       └── 002_voice_activity_reward.sql # Voice reward + level-up queue/upgrade
 ├── apps/
 │   ├── bot/                        # Discord bot + HTTP server
 │   │   └── src/
@@ -197,7 +198,7 @@ supabase/migrations/001_initial_schema.sql
 supabase/migrations/002_voice_activity_reward.sql
 ```
 
-`001_initial_schema.sql` là schema canonical đầy đủ: chỉ tạo bảng/function/index/trigger, cấu hình RLS/quyền; không chứa câu lệnh xóa dữ liệu hay migration vá. Chạy trên database mới hoặc schema đã được owner xác nhận tương thích. Không chạy SQL migration production trực tiếp từ bot.
+`001_initial_schema.sql` tạo schema nền cho database mới. Sau đó luôn chạy `002_voice_activity_reward.sql` để cài voice reward, queue thông báo lên cấp và hoàn tất quyền/RLS. Không chạy SQL migration production trực tiếp từ bot.
 
 Database mới: chạy `001` rồi `002`. Database đã có dữ liệu từ bản cũ: chỉ chạy `002`; migration này giữ XP, lượt quay, Hồn Khí/trang bị/collection, chỉ xóa cột awakening và đổi cách tính level về level 0. Không chạy lại `001` trên production.
 
@@ -241,7 +242,7 @@ Bot sẽ:
 | `/hon-lenh them nguoi-choi so-luong` | Admin                    | Cộng Hồn Lệnh cho người chơi        |
 | `/hon-lenh xoa nguoi-choi so-luong` | Admin                    | Trừ Hồn Lệnh, không cho số dư âm     |
 | `/gacha`                        | Mọi thành viên | Mở Activity gacha                   |
-| `/whitelist`                    | Admin                    | Mở bảng bật/tắt kênh thưởng chat    |
+| `/whitelist`                    | Admin                    | Mở bảng bật/tắt kênh thưởng chat/voice |
 
 ## Công thức game
 
@@ -291,13 +292,16 @@ soulOrdersGain = 1
 
 Chuẩn hóa dùng NFKC, chữ thường tiếng Việt, loại URL/mention/emoji và ký tự không phải chữ, số, khoảng trắng, `.?!`. Mỗi người nhận tối đa một thưởng mỗi `60 giây`. Fingerprint trùng trong `10 phút` với khoảng cách Hamming `<= 4` bị bỏ qua. Message ID đã xử lý cũng idempotent.
 
-### 3. Thức tỉnh và admin grant
+### 3. Voice reward và admin grant
 
 ```text
+voiceBucket = 10 phút liên tục trong kênh voice đã bật whitelist
+voiceCultivationGainPerBucket = 10
+voiceSoulOrdersGainPerBucket = 1
 newSoulOrders = oldSoulOrders + grantAmount
 ```
 
-Thức tỉnh chỉ cộng thưởng một lần. `/hon-lenh` nhận `grantAmount` nguyên trong `[1, 1.000.000]`; `sourceId` đã xử lý không cộng lần hai.
+Mỗi bucket voice đã hoàn tất chỉ được ghi nhận một lần. `/hon-lenh` nhận `grantAmount` nguyên trong `[1, 1.000.000]`; `sourceId` đã xử lý không cộng lần hai.
 
 ### 4. Bảo Khố và Hồn Thiết
 

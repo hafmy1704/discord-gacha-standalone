@@ -1460,6 +1460,24 @@ to service_role;
 
 alter table public.players add column if not exists last_voice_reward_at timestamptz;
 
+-- CREATE TABLE IF NOT EXISTS does not update constraints on an existing
+-- installation. Replace both event-type checks so the upgrade path accepts the
+-- new durable voice reward records as well as a fresh installation does.
+alter table public.user_activity_log
+  drop constraint if exists user_activity_log_event_type_check;
+alter table public.user_activity_log
+  add constraint user_activity_log_event_type_check check (event_type in (
+    'enroll', 'awakening', 'chat_reward', 'voice_reward', 'gacha_roll',
+    'vault_upgrade', 'equipment_replace', 'admin_grant', 'admin_remove'
+  ));
+
+alter table public.request_receipts
+  drop constraint if exists request_receipts_event_type_check;
+alter table public.request_receipts
+  add constraint request_receipts_event_type_check check (event_type in (
+    'chat_reward', 'voice_reward', 'gacha_roll', 'admin_grant'
+  ));
+
 create table if not exists public.voice_reward_buckets (
   guild_id text not null,
   user_id text not null,
@@ -1502,6 +1520,10 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_count integer;
 begin
+  insert into public.players (guild_id, user_id)
+  values (p_guild_id, p_user_id)
+  on conflict (guild_id, user_id) do nothing;
+
   update public.players
   set last_voice_reward_at = case when p_active then now() else null end
   where guild_id = p_guild_id and user_id = p_user_id;
@@ -1526,6 +1548,9 @@ begin
   if p_channel_id is null or length(p_channel_id) < 1 or length(p_channel_id) > 128 then
     raise exception using message = 'invalid_channel_id';
   end if;
+  insert into public.players (guild_id, user_id)
+  values (p_guild_id, p_user_id)
+  on conflict (guild_id, user_id) do nothing;
   select * into player_row from public.players
   where guild_id = p_guild_id and user_id = p_user_id for update;
   if not found then
@@ -1862,7 +1887,8 @@ revoke execute on function
   public.draw_hon_khi_with_session(text, text, text),
   public.cleanup_user_activity_log(),
   public.draw_hon_khi(text, text, text),
-  public.award_chat_message(text, text, text, text, integer, integer, boolean)
+  public.award_chat_message(text, text, text, text, integer, integer, boolean),
+  public.queue_level_up_events(text, text, integer, integer, bigint, text)
 from public, anon, authenticated;
 
 grant execute on function
