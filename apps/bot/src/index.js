@@ -14,7 +14,15 @@ import {
   StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { createDatabase } from "./database.js";
-import { createGuildMemberProfileResolver } from "./leaderboard.js";
+import {
+  createGuildMemberProfileResolver,
+  presentLeaderboard,
+} from "./leaderboard.js";
+import {
+  RANKING_COMMAND,
+  buildRankingCard,
+  deferRankingReply,
+} from "./ranking.js";
 import { createMiniappServer } from "./server.js";
 import { validateChatContent } from "./content.js";
 import { buildHonKhiCatalog } from "./hon-khi.js";
@@ -136,6 +144,7 @@ const COMMANDS = [
         .setName("nguoi-choi")
         .setDescription("Bỏ trống để xem hồ sơ của bản thân"),
     ),
+  RANKING_COMMAND,
   new SlashCommandBuilder()
     .setName("hon-lenh")
     .setDescription("Điều chỉnh Hồn Lệnh cho người chơi")
@@ -293,6 +302,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // /gacha
     if (interaction.commandName === "gacha") {
       await interaction.launchActivity({ withResponse: true });
+      return;
+    }
+
+    // /ranking
+    if (interaction.commandName === "ranking") {
+      await deferRankingReply(interaction);
+      try {
+        const storedLeaderboard = await database.getHonKhiLeaderboard({
+          guildId: GUILD_ID,
+          userId: interaction.user.id,
+          limit: 10,
+        });
+        const leaderboard = await presentLeaderboard(storedLeaderboard, {
+          resolveUser: resolveLeaderboardUser,
+        });
+        const card = await buildRankingCard({ leaderboard });
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xd9ad60)
+              .setImage("attachment://ranking-top10.png"),
+          ],
+          files: [
+            new AttachmentBuilder(card, { name: "ranking-top10.png" }),
+          ],
+          allowedMentions: { parse: [] },
+        });
+      } catch (error) {
+        console.error("ranking command failed", {
+          userId: interaction.user.id,
+          error: error.message,
+        });
+        await interaction.editReply({
+          content: "Không thể tải Thiên Cơ Bảng lúc này. Thử lại sau nhé.",
+          embeds: [],
+          files: [],
+        });
+      }
       return;
     }
 
