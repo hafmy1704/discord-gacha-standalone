@@ -175,11 +175,22 @@ function safeNumber(value, fallback) {
 }
 
 const ROW_CENTERS = [335, 463, 590, 704, 807, 911, 1016, 1122, 1228, 1334];
+const AVATAR_SOCKETS = [
+  { centerX: 169, centerY: 329, size: 86 },
+  { centerX: 165, centerY: 466, size: 86 },
+  { centerX: 164, centerY: 589, size: 86 },
+  { centerX: 157, centerY: 705, size: 72 },
+  { centerX: 157, centerY: 809, size: 72 },
+  { centerX: 157, centerY: 913, size: 72 },
+  { centerX: 157, centerY: 1017, size: 72 },
+  { centerX: 157, centerY: 1122, size: 72 },
+  { centerX: 157, centerY: 1226, size: 72 },
+  { centerX: 157, centerY: 1331, size: 72 },
+];
 
 function avatarGeometry(index) {
-  const size = index === 0 ? 92 : index < 3 ? 86 : 76;
-  const centerX = index === 0 ? 156 : index < 3 ? 158 : 157;
-  const centerY = ROW_CENTERS[index] ?? ROW_CENTERS.at(-1);
+  const socket = AVATAR_SOCKETS[index] ?? AVATAR_SOCKETS.at(-1);
+  const { centerX, centerY, size } = socket;
   return {
     size,
     left: Math.round(centerX - size / 2),
@@ -206,7 +217,12 @@ function buildHeaderSvg(entryCount, totalPlayers) {
 function buildContentSvg(entries, avatars) {
   const medalColors = ["#ffe194", "#e6f0f2", "#e7a778"];
   const rows = entries.map((entry, index) => {
-    const { centerX, centerY, size } = avatarGeometry(index);
+    const {
+      centerX: avatarCenterX,
+      centerY: avatarCenterY,
+      size: avatarSize,
+    } = avatarGeometry(index);
+    const centerY = ROW_CENTERS[index] ?? ROW_CENTERS.at(-1);
     const accent = medalColors[index] ?? "#64cdb9";
     const role = cultivationRoleName(entry.cultivationLevel);
     const tier = entry.highestTier > 0 ? `T${entry.highestTier}` : "Chưa có";
@@ -214,9 +230,9 @@ function buildContentSvg(entries, avatars) {
     const initial = escapeXml([...entry.displayName][0]?.toUpperCase() ?? "?");
     const fallbackAvatar = avatars[index]
       ? ""
-      : `<circle cx="${centerX}" cy="${centerY}" r="${size / 2}" fill="#081a22"/><circle cx="${centerX}" cy="${centerY}" r="${size / 2 - 3}" fill="#102a31" stroke="${accent}" stroke-opacity=".38"/><text x="${centerX}" y="${centerY + 11}" text-anchor="middle" fill="${accent}" font-size="${index < 3 ? 34 : 29}" font-weight="700">${initial}</text>`;
+      : `<circle cx="${avatarCenterX}" cy="${avatarCenterY}" r="${avatarSize / 2}" fill="#081a22"/><circle cx="${avatarCenterX}" cy="${avatarCenterY}" r="${avatarSize / 2 - 3}" fill="#102a31" stroke="${accent}" stroke-opacity=".38"/><text x="${avatarCenterX}" y="${avatarCenterY + 11}" text-anchor="middle" fill="${accent}" font-size="${index < 3 ? 34 : 29}" font-weight="700">${initial}</text>`;
     const selfBadge = entry.isSelf
-      ? `<rect x="${centerX - 29}" y="${centerY + size / 2 - 21}" width="58" height="20" rx="10" fill="#0c332e" fill-opacity=".96" stroke="#75ddc8" stroke-opacity=".9"/><text x="${centerX}" y="${centerY + size / 2 - 7}" text-anchor="middle" fill="#a3f4e3" font-size="10" font-weight="800" letter-spacing="1">BẠN</text>`
+      ? `<rect x="${avatarCenterX - 29}" y="${avatarCenterY + avatarSize / 2 - 21}" width="58" height="20" rx="10" fill="#0c332e" fill-opacity=".96" stroke="#75ddc8" stroke-opacity=".9"/><text x="${avatarCenterX}" y="${avatarCenterY + avatarSize / 2 - 7}" text-anchor="middle" fill="#a3f4e3" font-size="10" font-weight="800" letter-spacing="1">BẠN</text>`
       : "";
     return `<g font-family="Noto Sans, sans-serif">
       ${fallbackAvatar}

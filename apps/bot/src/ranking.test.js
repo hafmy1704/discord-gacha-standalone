@@ -108,3 +108,67 @@ test("ranking renderer uses the generated ten-slot artwork template", async () =
   assert.equal(metadata.width, RANKING_CARD_WIDTH);
   assert.equal(metadata.height, RANKING_CARD_HEIGHT);
 });
+
+test("ranking avatars stay inset and concentric with all ten artwork sockets", async () => {
+  const marker = await sharp({
+    create: {
+      width: 128,
+      height: 128,
+      channels: 4,
+      background: { r: 28, g: 235, b: 205, alpha: 1 },
+    },
+  })
+    .composite([{
+      input: Buffer.from('<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg"><path d="M64 0v128M0 64h128" stroke="#ff2c87" stroke-width="5"/><circle cx="64" cy="64" r="10" fill="#fff"/></svg>'),
+    }])
+    .png()
+    .toBuffer();
+  const entries = Array.from({ length: 10 }, (_, index) => entry(index + 1, {
+    avatarUrl: `https://cdn.discordapp.com/avatars/${index + 1}/marker.webp`,
+  }));
+  const card = await buildRankingCard({
+    leaderboard: { entries, totalPlayers: 10 },
+    avatarLoader: async () => marker,
+  });
+  const { data, info } = await sharp(card)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const expected = [
+    [168.5, 328.5, 86],
+    [164.5, 465.5, 86],
+    [163.5, 588.5, 86],
+    [156.5, 704.5, 72],
+    [156.5, 808.5, 72],
+    [156.5, 912.5, 72],
+    [156.5, 1016.5, 72],
+    [156.5, 1121.5, 72],
+    [156.5, 1225.5, 72],
+    [156.5, 1330.5, 72],
+  ];
+
+  const observed = expected.map(([, approximateY]) => {
+    const points = [];
+    for (let y = approximateY - 49; y <= approximateY + 49; y += 1) {
+      for (let x = 90; x <= 225; x += 1) {
+        const pixelY = Math.round(y);
+        const offset = (pixelY * info.width + x) * info.channels;
+        const [red, green, blue] = data.subarray(offset, offset + 3);
+        if (red < 80 && green > 180 && blue > 150) points.push([x, pixelY]);
+      }
+    }
+    const xs = points.map(([x]) => x);
+    const ys = points.map(([, y]) => y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    return [
+      (minX + maxX) / 2,
+      (minY + maxY) / 2,
+      maxX - minX + 1,
+    ];
+  });
+
+  assert.deepEqual(observed, expected);
+});
