@@ -4,6 +4,7 @@ import { MessageFlags } from "discord.js";
 import sharp from "sharp";
 import {
   RANKING_CARD_HEIGHT,
+  RANKING_TEMPLATE_PATH,
   RANKING_CARD_WIDTH,
   RANKING_COMMAND,
   buildRankingCard,
@@ -98,4 +99,12 @@ test("ranking card renders safely with avatar failures and hostile display text"
     "https://cdn.discordapp.com/avatars/123/hash.webp?size=64",
     "https://media.discordapp.net/avatars/456/hash.webp?size=64",
   ]);
+});
+
+test("ranking renderer uses the generated ten-slot artwork template", async () => {
+  const metadata = await sharp(RANKING_TEMPLATE_PATH).metadata();
+
+  assert.equal(metadata.format, "png");
+  assert.equal(metadata.width, RANKING_CARD_WIDTH);
+  assert.equal(metadata.height, RANKING_CARD_HEIGHT);
 });
