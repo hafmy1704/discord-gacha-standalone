@@ -14,6 +14,7 @@ import {
   StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { createDatabase } from "./database.js";
+import { createGuildMemberProfileResolver } from "./leaderboard.js";
 import { createMiniappServer } from "./server.js";
 import { validateChatContent } from "./content.js";
 import { buildHonKhiCatalog } from "./hon-khi.js";
@@ -76,18 +77,6 @@ const MINIAPP_ALLOWED_ORIGINS = (process.env.MINIAPP_ALLOWED_ORIGINS ?? "")
 
 let discordReady = false;
 const database = createDatabase();
-const miniappServer = createMiniappServer({
-  database,
-  signingSecret: SIGNING_SECRET,
-  guildId: GUILD_ID,
-  discordClientId: APP_ID,
-  discordClientSecret: CLIENT_SECRET,
-  allowedOrigins: MINIAPP_ALLOWED_ORIGINS,
-  isReady: () => discordReady,
-});
-
-let whitelistMutation = Promise.resolve();
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -97,6 +86,21 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
+const resolveLeaderboardUser = createGuildMemberProfileResolver({
+  getGuild: () => client.guilds.cache.get(GUILD_ID),
+});
+const miniappServer = createMiniappServer({
+  database,
+  signingSecret: SIGNING_SECRET,
+  guildId: GUILD_ID,
+  discordClientId: APP_ID,
+  discordClientSecret: CLIENT_SECRET,
+  allowedOrigins: MINIAPP_ALLOWED_ORIGINS,
+  isReady: () => discordReady,
+  resolveLeaderboardUser,
+});
+
+let whitelistMutation = Promise.resolve();
 
 // ── Slash command definitions ─────────────────────────────────────────────────
 

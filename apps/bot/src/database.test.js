@@ -160,3 +160,34 @@ test("chat reward recreates a deleted player before awarding", async () => {
   assert.deepEqual(requests[0].body, { guild_id: "guild-1", user_id: "user-1" });
   assert.equal(requests[1].url, "https://example.supabase.co/rest/v1/rpc/award_chat_message");
 });
+
+test("leaderboard keeps the Discord user id for server-side identity resolution", async () => {
+  const database = createDatabase({
+    url: "https://example.supabase.co",
+    serviceRoleKey: "test-key",
+    fetchImpl: async () => new Response(JSON.stringify({
+      entries: [{
+        userId: "123456789012345678",
+        rank: 1,
+        power: 1234,
+        vaultLevel: 2,
+        cultivationLevel: 1,
+        highestTier: 4,
+        isSelf: true,
+      }],
+      self: null,
+      totalPlayers: 1,
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }),
+  });
+
+  const leaderboard = await database.getHonKhiLeaderboard({
+    guildId: "guild-1",
+    userId: "123456789012345678",
+  });
+
+  assert.equal(leaderboard.entries[0].userId, "123456789012345678");
+  assert.match(leaderboard.entries[0].tag, /^[A-Z0-9]{5}$/u);
+});

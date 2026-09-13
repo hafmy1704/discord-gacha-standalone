@@ -401,6 +401,7 @@ function mapPlayerProfile(value) {
 
 function mapLeaderboardEntry(value) {
   return {
+    userId: String(value.userId ?? ""),
     rank: Number(value.rank ?? 0),
     power: Number(value.power ?? 0),
     vaultLevel: Number(value.vaultLevel ?? 1),

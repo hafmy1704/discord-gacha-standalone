@@ -86,11 +86,13 @@ type LeaderboardEntry = {
   highestTier: number;
   tag: string;
   isSelf: boolean;
+  displayName: string;
+  avatarUrl: string | null;
 };
 
 type Leaderboard = {
   entries: LeaderboardEntry[];
-  self: { rank: number; power: number; vaultLevel: number; highestTier: number; tag: string } | null;
+  self: LeaderboardEntry | null;
   totalPlayers: number;
 };
 
@@ -386,6 +388,34 @@ const VaultRatePanel = ({ session, catalog }: { session: Session; catalog: Catal
   );
 };
 
+const LeaderboardAvatar = ({ entry }: { entry: LeaderboardEntry }) => {
+  const initial = [...entry.displayName.trim()][0]?.toLocaleUpperCase("vi-VN") ?? "?";
+  return (
+    <span className="hk-rank-avatar" aria-hidden="true">
+      <span>{initial}</span>
+      {entry.avatarUrl && (
+        <img
+          src={entry.avatarUrl}
+          alt=""
+          loading="lazy"
+          draggable={false}
+          onError={(event) => event.currentTarget.remove()}
+        />
+      )}
+    </span>
+  );
+};
+
+const LeaderboardIdentity = ({ entry, compact = false }: { entry: LeaderboardEntry; compact?: boolean }) => (
+  <>
+    <LeaderboardAvatar entry={entry} />
+    <div className="hk-rank-id">
+      <strong title={entry.displayName}>{entry.displayName}{entry.isSelf && <em className="hk-rank-you">Bạn</em>}</strong>
+      {!compact && <small>Bảo Khố {entry.vaultLevel} · T{entry.highestTier}</small>}
+    </div>
+  </>
+);
+
 const LeaderboardPanel = ({ leaderboard, failed }: { leaderboard: Leaderboard | null; failed: boolean }) => (
   <section className="hk-panel hk-rank-card">
     <div className="hk-panel-heading"><div><span className="hk-kicker">THIÊN CƠ BẢNG</span><h2>Bảng Xếp Hạng</h2></div><small>{leaderboard ? `${formatNumber(leaderboard.totalPlayers)} đạo hữu` : "…"}</small></div>
@@ -398,14 +428,14 @@ const LeaderboardPanel = ({ leaderboard, failed }: { leaderboard: Leaderboard | 
         {leaderboard.entries.map((entry) => (
           <li key={entry.rank} className={`hk-rank-row ${entry.isSelf ? "is-self" : ""} ${entry.rank <= 3 ? `is-top rank-${entry.rank}` : ""}`}>
             <span className="hk-rank-num">{entry.rank}</span>
-            <div className="hk-rank-id"><strong>{entry.isSelf ? "Bạn" : `Đạo Hữu #${entry.tag}`}</strong><small>Bảo Khố {entry.vaultLevel} · T{entry.highestTier}</small></div>
+            <LeaderboardIdentity entry={entry} />
             <b className="hk-rank-power">{formatNumber(entry.power)}</b>
           </li>
         ))}
       </ol>
     )}
     {leaderboard?.self && leaderboard.self.rank > leaderboard.entries.length && (
-      <div className="hk-rank-self"><span className="hk-rank-num">{leaderboard.self.rank}</span><div className="hk-rank-id"><strong>Bạn</strong></div><b className="hk-rank-power">{formatNumber(leaderboard.self.power)}</b></div>
+      <div className="hk-rank-self"><span className="hk-rank-num">{leaderboard.self.rank}</span><LeaderboardIdentity entry={leaderboard.self} compact /><b className="hk-rank-power">{formatNumber(leaderboard.self.power)}</b></div>
     )}
   </section>
 );

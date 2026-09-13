@@ -29,7 +29,21 @@ test("miniapp security boundaries", async () => {
   const database = {
     async getHonKhiSession(identity) { identities.push(identity); return { ok: true }; },
     async listHonKhiItems() { return []; },
-    async getHonKhiLeaderboard() { return { entries: [], self: null, totalPlayers: 0 }; },
+    async getHonKhiLeaderboard() {
+      return {
+        entries: [{
+          userId: "user-2",
+          tag: "ABC12",
+          rank: 1,
+          power: 9001,
+          vaultLevel: 3,
+          highestTier: 5,
+          isSelf: false,
+        }],
+        self: null,
+        totalPlayers: 1,
+      };
+    },
     async drawHonKhi() {
       drawCalls += 1;
       if (drawFailure) throw drawFailure;
@@ -57,6 +71,12 @@ test("miniapp security boundaries", async () => {
     discordClientSecret: "secret-1",
     allowedOrigins: ["https://activity.example"],
     isReady: () => ready,
+    resolveLeaderboardUser: async (userId) => userId === "user-2"
+      ? {
+          displayName: "Lữ Khách",
+          avatarUrl: "https://cdn.discordapp.com/avatars/user-2/hash.webp?size=64",
+        }
+      : null,
   });
   try {
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -97,6 +117,20 @@ test("miniapp security boundaries", async () => {
     response = await fetch(base + "/api/gacha/session", { headers: { cookie: cookie.split(";")[0] } });
     assert.equal(response.status, 200);
     assert.equal(identities[0].userId, "user-1");
+
+    response = await fetch(base + "/api/gacha/leaderboard", { headers: { cookie: cookie.split(";")[0] } });
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers.get("content-security-policy"),
+      /img-src[^;]*https:\/\/cdn\.discordapp\.com/u,
+    );
+    const leaderboard = await response.json();
+    assert.equal(leaderboard.entries[0].displayName, "Lữ Khách");
+    assert.equal(
+      leaderboard.entries[0].avatarUrl,
+      "https://cdn.discordapp.com/avatars/user-2/hash.webp?size=64",
+    );
+    assert.equal("userId" in leaderboard.entries[0], false);
 
     response = await fetch(base + "/api/gacha/draw", {
       method: "POST",

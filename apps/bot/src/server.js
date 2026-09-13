@@ -5,6 +5,7 @@ import { isIP } from "node:net";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLaunchToken, verifyLaunchToken } from "./launch-token.js";
+import { presentLeaderboard } from "./leaderboard.js";
 
 const DEFAULT_PUBLIC_ROOT = fileURLToPath(
   new URL("../../gacha/dist/", import.meta.url),
@@ -37,6 +38,7 @@ export function createMiniappServer({
   discordClientSecret,
   allowedOrigins = [],
   isReady = () => true,
+  resolveLeaderboardUser = async () => null,
 }) {
   if (!database || !signingSecret)
     throw new Error("database and signingSecret are required");
@@ -100,9 +102,12 @@ export function createMiniappServer({
         }
 
         if (req.method === "GET" && pathname === "/api/gacha/leaderboard") {
-          const leaderboard = await database.getHonKhiLeaderboard({
+          const storedLeaderboard = await database.getHonKhiLeaderboard({
             ...identity,
             limit: 20,
+          });
+          const leaderboard = await presentLeaderboard(storedLeaderboard, {
+            resolveUser: resolveLeaderboardUser,
           });
           return json(res, 200, leaderboard);
         }
@@ -485,7 +490,7 @@ function setSecurityHeaders(res) {
   res.setHeader(
     "content-security-policy",
     "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; " +
-      "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; " +
+      "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net; connect-src 'self'; " +
       "frame-ancestors 'self' https://discord.com https://*.discord.com",
   );
   res.setHeader("referrer-policy", "no-referrer");
