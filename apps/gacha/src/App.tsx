@@ -375,7 +375,7 @@ const VaultRatePanel = ({ session, catalog }: { session: Session; catalog: Catal
           {shown.map((entry) => (
             <div key={entry.tier} className={`hk-rate-row tier-${entry.tier}`}>
               <span className="hk-rate-tier">T{entry.tier}</span>
-              <div className="hk-rate-body"><em>{catalog.find((item) => item.tier === entry.tier)?.tierLabel ?? `Tier ${entry.tier}`}</em><i><b style={{ width: `${Math.max(3, entry.rate * 100)}%` }} /></i></div>
+              <div className="hk-rate-body"><em>{catalog.find((item) => item.tier === entry.tier)?.tierLabel ?? `Phẩm cấp ${entry.tier}`}</em><i><b style={{ width: `${Math.max(3, entry.rate * 100)}%` }} /></i></div>
               <strong>{formatRate(entry.rate)}</strong>
             </div>
           ))}
@@ -388,7 +388,7 @@ const VaultRatePanel = ({ session, catalog }: { session: Session; catalog: Catal
 
 const LeaderboardPanel = ({ leaderboard, failed }: { leaderboard: Leaderboard | null; failed: boolean }) => (
   <section className="hk-panel hk-rank-card">
-    <div className="hk-panel-heading"><div><span className="hk-kicker">THIÊN CƠ BẢNG</span><h2>Top 20</h2></div><small>{leaderboard ? `${formatNumber(leaderboard.totalPlayers)} đạo hữu` : "…"}</small></div>
+    <div className="hk-panel-heading"><div><span className="hk-kicker">THIÊN CƠ BẢNG</span><h2>Bảng Xếp Hạng</h2></div><small>{leaderboard ? `${formatNumber(leaderboard.totalPlayers)} đạo hữu` : "…"}</small></div>
     {!leaderboard ? (
       <p className="hk-rank-empty">{failed ? "Không tải được bảng xếp hạng · đang thử lại…" : "Đang tải bảng xếp hạng…"}</p>
     ) : leaderboard.entries.length === 0 ? (
@@ -416,7 +416,7 @@ const EquipmentCard = ({ item, tierLabel }: { item: Equipment; tierLabel: string
     <div className="hk-equipment-art"><ItemArt item={item} /></div>
     <div className="hk-equipment-tier">{tierLabel}</div>
     <h3>{item.name}</h3>
-    <div className="hk-equipment-power"><span>POWER</span><strong>{formatNumber(item.power)}</strong></div>
+    <div className="hk-equipment-power"><span>CÔNG SUẤT</span><strong>{formatNumber(item.power)}</strong></div>
     <div className="hk-equipment-meta"><span>Niên Hạn {formatAge(item.ageYears)}</span></div>
     <StatList stats={item.stats} />
   </article>
@@ -437,9 +437,9 @@ const EquipmentGrid = ({ equipped, catalog, count, power }: { equipped: Equipmen
     <section className="hk-panel hk-equipment-panel">
       <div className="hk-panel-heading">
         <div><span className="hk-kicker">TRANG BỊ HIỆN TẠI</span><h2>Thập Nhị Hồn Vị</h2></div>
-        <div className="hk-equipment-summary"><b>{count} / 12</b><span>Tổng Power {formatNumber(power)}</span></div>
+        <div className="hk-equipment-summary"><b>{count} / 12</b><span>Tổng công suất {formatNumber(power)}</span></div>
       </div>
-      <div className="hk-equipment-grid">{slots.map(([slot, slotLabel]) => { const item = bySlot.get(slot); return item ? <EquipmentCard key={slot} item={item} tierLabel={tierLabels.get(item.tier) ?? `Tier ${item.tier}`} /> : <EmptySlotCard key={slot} slot={slot} slotLabel={slotLabel} />; })}</div>
+      <div className="hk-equipment-grid">{slots.map(([slot, slotLabel]) => { const item = bySlot.get(slot); return item ? <EquipmentCard key={slot} item={item} tierLabel={tierLabels.get(item.tier) ?? `Phẩm cấp ${item.tier}`} /> : <EmptySlotCard key={slot} slot={slot} slotLabel={slotLabel} />; })}</div>
     </section>
   );
 };
@@ -460,7 +460,7 @@ const LatestRoll = ({ result, catalog, onClose, closable }: { result: RollResult
         <div className="hk-latest-art"><ItemArt item={display} /><span>T{result.tier}</span></div>
       </div>
       <div className="hk-latest-copy"><h2>{display.name}</h2><p>{display.slotLabel} · Niên Hạn <b>{formatAge(result.ageYears)}</b></p><StatList stats={result.stats} /></div>
-      <div className="hk-latest-power"><span>POWER</span><strong>{formatNumber(result.power)}</strong></div>
+      <div className="hk-latest-power"><span>CÔNG SUẤT</span><strong>{formatNumber(result.power)}</strong></div>
     </div>
   );
 };
@@ -510,7 +510,7 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
             <div className="hk-floating-actions">
               <div className="hk-floating-resource"><Icon name="ticket" /><strong>{formatNumber(session.soulOrders)}</strong><span>HỒN LỆNH</span></div>
               <button className="hk-float-button hk-float-single" type="button" aria-label="Triệu Dẫn x1" disabled={busy || autoRunning || !session.canDraw} onClick={onDraw}><span>X1</span></button>
-              <button className={`hk-float-button hk-float-auto ${autoRunning ? "is-running" : ""}`} type="button" aria-label={autoRunning ? "Dừng triệu dẫn tự động" : "Triệu dẫn tự động"} disabled={!autoRunning && (busy || !session.canDraw)} onClick={autoRunning ? onStop : onAuto}><span>AUTO</span></button>
+              <button className={`hk-float-button hk-float-auto ${autoRunning ? "is-running" : ""}`} type="button" aria-label={autoRunning ? "Dừng triệu dẫn tự động" : "Triệu dẫn tự động"} disabled={!autoRunning && (busy || !session.canDraw)} onClick={autoRunning ? onStop : onAuto}><span>TỰ ĐỘNG</span></button>
             </div>
           </div>
         </div>
@@ -520,7 +520,7 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
 };
 
 const EquipmentView = ({ session, catalog }: { session: Session; catalog: CatalogItem[] }) => (
-  <section className="hk-content-page"><div className="hk-page-heading"><span className="hk-kicker">BẢO KHỐ HIỆN HỮU</span><h1>Trang Bị Hồn Khí</h1><p>Không có inventory chờ thao tác. Mỗi slot chỉ giữ món có Power cao nhất.</p></div><EquipmentGrid equipped={session.equipped} catalog={catalog} count={session.equipmentCount} power={session.equipmentPower} /></section>
+  <section className="hk-content-page"><div className="hk-page-heading"><span className="hk-kicker">BẢO KHỐ HIỆN HỮU</span><h1>Trang Bị Hồn Khí</h1><p>Không có trang bị chờ thao tác. Mỗi slot chỉ giữ món có công suất cao nhất.</p></div><EquipmentGrid equipped={session.equipped} catalog={catalog} count={session.equipmentCount} power={session.equipmentPower} /></section>
 );
 
 const CatalogView = ({ catalog, collection, collectionSummary, totalRolls }: { catalog: CatalogItem[]; collection: Session["collection"]; collectionSummary: Session["collectionSummary"]; totalRolls: number }) => {
@@ -534,7 +534,7 @@ const CatalogView = ({ catalog, collection, collectionSummary, totalRolls }: { c
         const items = catalog.filter((item) => item.tier === tier);
         return (
           <section className={`hk-catalog-tier tier-${tier}`} key={tier}>
-            <div className="hk-catalog-tier-head"><span className="hk-catalog-tier-badge">T{tier}</span><div><h2>{items[0]?.tierLabel ?? `Tier ${tier}`}</h2><span>{summary.discoveredCount} / {summary.totalCount} đã khám phá</span></div></div>
+            <div className="hk-catalog-tier-head"><span className="hk-catalog-tier-badge">T{tier}</span><div><h2>{items[0]?.tierLabel ?? `Phẩm cấp ${tier}`}</h2><span>{summary.discoveredCount} / {summary.totalCount} đã khám phá</span></div></div>
             <div className="hk-catalog-grid">{items.map((item) => discovered.has(item.itemCode) ? (
               <article className={`hk-catalog-card tier-${item.tier}`} key={item.itemCode}>
                 <div className="hk-catalog-art"><ItemArt item={item} /><b>T{item.tier}</b></div>
@@ -875,7 +875,7 @@ export const App = () => {
           <div className="hk-loading-seal" aria-hidden="true"><span className="hk-loading-orbit" /><span className="hk-loading-orbit hk-loading-orbit-two" /><span className="hk-loading-core">魂</span></div>
           <div className="hk-loading-copy">
             <span className="hk-loading-kicker">HỒN KHÍ · BẢO KHỐ</span>
-            <strong>{error ? "Kết nối gián đoạn" : "Đang thức tỉnh"}</strong>
+            <strong>{error ? "Kết nối gián đoạn" : "Đang khởi động"}</strong>
             <p>{error || stageLabel}</p>
             {!error && (
               <>
@@ -897,7 +897,7 @@ function readableError(reason: unknown) {
   return {
     insufficient_soul_orders: "Không còn Hồn Lệnh.",
     gacha_cooldown: "Linh lực đang hồi phục. Chờ đủ 4 giây.",
-    not_enrolled: "Hãy bấm Thức Tỉnh trong Discord trước.",
+    not_enrolled: "Hãy tham gia máy chủ Discord trước.",
     gacha_empty: "Catalog Hồn Khí chưa sẵn sàng.",
     activity_auth_failed: "Discord chưa cấp được phiên Activity. Đóng rồi mở lại Activity.",
     activity_open_in_discord: "Hãy mở bằng lệnh /gacha trong Discord, không mở trực tiếp URL tunnel.",
@@ -905,8 +905,8 @@ function readableError(reason: unknown) {
     "invalid launch token": "Phiên Activity không hợp lệ. Đóng rồi mở lại Activity.",
     csrf_rejected: "Phiên bảo mật không hợp lệ. Đóng rồi mở lại Activity.",
     rate_limited: "Thao tác quá nhanh. Chờ một chút rồi thử lại.",
-    backend_unavailable: "Backend đang tạm thời không khả dụng. Thử lại sau.",
-  }[code] ?? "Backend từ chối lượt thao tác. Thử lại sau.";
+    backend_unavailable: "Máy chủ đang tạm thời không khả dụng. Thử lại sau.",
+  }[code] ?? "Máy chủ từ chối lượt thao tác. Thử lại sau.";
 }
 
 function errorCode(reason: unknown) {
@@ -924,8 +924,8 @@ function errorMessage(reason: unknown) {
   if (code.includes("/api/activity/token"))
     return "Không thể tạo phiên Discord Activity tạm thời. Hệ thống đã retry tự động, hãy thử mở lại Activity nếu vẫn lỗi.";
   return code === "not_enrolled"
-    ? "Hãy bấm Thức Tỉnh trong Discord trước."
-    : `Không tải được Hồn Khí: ${code}`;
+    ? "Hãy tham gia máy chủ Discord trước."
+    : "Không tải được Hồn Khí. Vui lòng thử lại.";
 }
 
 
