@@ -2396,3 +2396,381 @@ button:focus-visible { outline: 2px solid var(--jade); outline-offset: 3px; }
 .hk-rate-level strong { color: var(--gold-bright); font-family: var(--font-system); font-size: 13px; }
 .hk-rate-level .hk-rate-step { width: 24px; height: 24px; }
 
+/* Responsive architecture: keep the ritual cinematic, move dense information
+   into a readable flow when the Discord Activity becomes narrow. */
+:root {
+  --hk-safe-top: env(safe-area-inset-top, 0px);
+  --hk-safe-right: env(safe-area-inset-right, 0px);
+  --hk-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --hk-safe-left: env(safe-area-inset-left, 0px);
+  --hk-mobile-nav-height: 62px;
+}
+
+.hk-ritual-stage {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  isolation: isolate;
+}
+.hk-mobile-scroll-cue { display: none; }
+
+.hk-content-page {
+  padding-top: clamp(84px, 7vw, 104px);
+  padding-right: clamp(14px, 3.5vw, 56px);
+  padding-bottom: 72px;
+  padding-left: clamp(14px, 3.5vw, 56px);
+}
+
+.hk-page-heading h1 { text-wrap: balance; }
+.hk-page-heading p { text-wrap: pretty; }
+.hk-equipment-power strong,
+.hk-equipment-summary b,
+.hk-rank-power,
+.hk-rate-row strong { font-variant-numeric: tabular-nums; }
+
+.hk-nav:focus-visible,
+.hk-float-button:focus-visible,
+.hk-rate-step:focus-visible,
+.hk-rate-reset:focus-visible,
+.hk-latest-close:focus-visible {
+  outline: 2px solid #b7f7e8;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1040px) and (min-width: 841px) {
+  .hk-info-float,
+  .hk-rank-float { width: clamp(238px, 27vw, 276px); }
+  .hk-info-float { left: clamp(10px, 2vw, 26px); }
+  .hk-rank-float { right: clamp(10px, 2vw, 26px); }
+  .hk-info-card,
+  .hk-rank-card { transform: none; }
+}
+
+@media (max-width: 840px) {
+  .hk-app:not(.is-compact) { overflow: hidden; }
+  .hk-app:not(.is-compact) .hk-main {
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overflow-anchor: none;
+    overscroll-behavior-y: contain;
+    scroll-padding-bottom: calc(var(--hk-mobile-nav-height) + var(--hk-safe-bottom));
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hk-app:not(.is-compact) .hk-main::-webkit-scrollbar { display: none; }
+
+  .hk-app:not(.is-compact) .hk-hub-page,
+  .hk-app:not(.is-compact) .hk-hub-grid,
+  .hk-app:not(.is-compact) .hk-hub-center {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .hk-app:not(.is-compact) .hk-hub-page {
+    padding: 0 0 calc(var(--hk-mobile-nav-height) + 24px + var(--hk-safe-bottom));
+    background: linear-gradient(180deg, #06121a 0, #04090f 62%, #071319 100%);
+  }
+
+  .hk-app:not(.is-compact) .hk-ritual {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    perspective: none;
+    background: none;
+  }
+
+  .hk-app:not(.is-compact) .hk-ritual::before,
+  .hk-app:not(.is-compact) .hk-ritual::after { display: none; }
+
+  .hk-app:not(.is-compact) .hk-ritual-stage {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: max(540px, 100svh);
+    height: max(540px, 100dvh);
+    min-height: 0;
+    flex: none;
+    overflow: hidden;
+    border-radius: 0 0 22px 22px;
+    background: radial-gradient(ellipse at 50% 40%, rgba(18, 92, 91, .2), transparent 58%), #03090f;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .42);
+  }
+
+  .hk-app:not(.is-compact) .hk-ritual-stage::after {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(180deg, rgba(3, 9, 15, .08) 62%, rgba(3, 9, 15, .86) 100%);
+  }
+
+  .hk-app:not(.is-compact) .hk-ritual-canvas { border-radius: inherit; }
+  .hk-app:not(.is-compact) .hk-mobile-scroll-cue {
+    position: absolute;
+    z-index: 15;
+    top: calc(16px + var(--hk-safe-top));
+    right: max(14px, var(--hk-safe-right));
+    display: block;
+    color: rgba(173, 211, 202, .72);
+    font-family: var(--font-system);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-shadow: 0 2px 10px #000;
+    transition: opacity .3s ease, transform .3s ease;
+  }
+  .hk-app:not(.is-compact) .hk-ritual.is-zoomed .hk-mobile-scroll-cue {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  .hk-app:not(.is-compact) .hk-ritual-overlay {
+    position: relative;
+    z-index: 2;
+    inset: auto;
+    width: auto;
+    margin: 0 max(12px, var(--hk-safe-right)) 0 max(12px, var(--hk-safe-left));
+    perspective: none;
+    transform: none;
+  }
+
+  .hk-app:not(.is-compact) .hk-info-float { order: 2; }
+  .hk-app:not(.is-compact) .hk-rank-float { order: 3; }
+  .hk-app:not(.is-compact) .hk-ritual-overlay .hk-panel {
+    padding: 16px;
+    border-color: rgba(142, 213, 202, .2);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(10, 30, 37, .96), rgba(5, 15, 22, .96));
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .3), inset 0 1px rgba(255, 255, 255, .05);
+    backdrop-filter: none;
+    transform: none;
+  }
+
+  .hk-app:not(.is-compact) .hk-info-float:hover .hk-info-card,
+  .hk-app:not(.is-compact) .hk-rank-float:hover .hk-rank-card { transform: none; }
+
+  .hk-app:not(.is-compact) .hk-info-card {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) 1px minmax(0, 1.1fr);
+    align-items: start;
+    gap: 18px;
+  }
+
+  .hk-app:not(.is-compact) .hk-info-divider {
+    width: 1px;
+    height: 100%;
+    min-height: 150px;
+    margin: 0;
+    background: linear-gradient(180deg, transparent, rgba(142, 213, 202, .34), transparent);
+  }
+
+  .hk-app:not(.is-compact) .hk-rate-level .hk-rate-step {
+    width: 34px;
+    height: 34px;
+  }
+
+  .hk-app:not(.is-compact) .hk-rate-row .hk-rate-body em { font-size: 10px; }
+  .hk-app:not(.is-compact) .hk-rate-row strong { font-size: 11px; }
+  .hk-app:not(.is-compact) .hk-rank-list {
+    max-height: none;
+    overflow: visible;
+  }
+  .hk-app:not(.is-compact) .hk-rank-row,
+  .hk-app:not(.is-compact) .hk-rank-self {
+    min-height: 43px;
+    grid-template-columns: 26px 34px minmax(0, 1fr) auto;
+    gap: 9px;
+    padding: 6px 8px;
+  }
+  .hk-app:not(.is-compact) .hk-rank-avatar { width: 34px; height: 34px; }
+  .hk-app:not(.is-compact) .hk-rank-id strong { font-size: 12px; }
+  .hk-app:not(.is-compact) .hk-rank-id small { font-size: 9px; }
+  .hk-app:not(.is-compact) .hk-rank-power { font-size: 12px; }
+
+  .hk-app:not(.is-compact) .hk-nav-dock {
+    position: fixed;
+    z-index: 60;
+    top: auto;
+    right: max(8px, var(--hk-safe-right));
+    bottom: max(8px, var(--hk-safe-bottom));
+    left: max(8px, var(--hk-safe-left));
+    width: auto;
+    max-width: none;
+    justify-content: stretch;
+    gap: 4px;
+    padding: 5px;
+    border-color: rgba(153, 225, 212, .22);
+    border-radius: 16px;
+    background: rgba(5, 16, 23, .94);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .55), inset 0 1px rgba(255, 255, 255, .05);
+    backdrop-filter: blur(16px) saturate(130%);
+    transform: none;
+  }
+
+  .hk-app:not(.is-compact) .hk-nav-dock .hk-nav {
+    min-width: 0;
+    min-height: 46px;
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 9px 8px;
+    font-size: 10px;
+  }
+
+  .hk-app:not(.is-compact).is-gacha .hk-nav-dock {
+    opacity: 0;
+    transform: translateY(16px);
+    pointer-events: none;
+  }
+
+  .hk-app:not(.is-compact) .hk-floating-actions {
+    bottom: calc(var(--hk-mobile-nav-height) + 16px + var(--hk-safe-bottom));
+  }
+  .hk-app:not(.is-compact) .hk-ritual-status {
+    bottom: calc(var(--hk-mobile-nav-height) + var(--hk-action-size) + 28px + var(--hk-safe-bottom));
+  }
+  .hk-app:not(.is-compact) .hk-floating-resource {
+    display: grid;
+    min-width: 84px;
+  }
+  .hk-app:not(.is-compact) .hk-phase-result .hk-ritual-status { opacity: .2; }
+  .hk-app:not(.is-compact) .hk-latest-roll {
+    bottom: calc(var(--hk-mobile-nav-height) + var(--hk-action-size) + 34px + var(--hk-safe-bottom));
+    width: min(560px, calc(100% - 20px));
+  }
+  .hk-app:not(.is-compact) .hk-latest-card-header { padding-right: 42px; }
+  .hk-app:not(.is-compact) .hk-latest-close {
+    top: -5px;
+    right: -3px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .hk-content-page {
+    min-height: 100dvh;
+    padding: clamp(28px, 7vw, 48px) 12px calc(var(--hk-mobile-nav-height) + 32px + var(--hk-safe-bottom));
+  }
+  .hk-page-heading { margin-bottom: 22px; }
+  .hk-page-heading h1 { font-size: clamp(38px, 9vw, 56px); }
+  .hk-equipment-panel { padding: clamp(12px, 3vw, 18px); }
+  .hk-equipment-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    gap: 9px;
+  }
+  .hk-catalog-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+    gap: 8px;
+  }
+  .hk-content-page .hk-catalog-card { min-height: 62px; }
+  .hk-catalog-info strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.05;
+  }
+  .hk-error {
+    top: calc(10px + var(--hk-safe-top));
+    width: calc(100% - 20px);
+  }
+}
+
+@media (max-width: 520px) {
+  .hk-app:not(.is-compact) .hk-ritual-stage {
+    height: max(500px, 100svh);
+    height: max(500px, 100dvh);
+  }
+  .hk-app:not(.is-compact) .hk-info-card { display: block; }
+  .hk-app:not(.is-compact) .hk-info-divider {
+    width: auto;
+    height: 1px;
+    min-height: 0;
+    margin: 15px 0;
+    background: linear-gradient(90deg, transparent, rgba(142, 213, 202, .34), transparent);
+  }
+  .hk-app:not(.is-compact) .hk-ritual-overlay .hk-panel { padding: 14px; }
+  .hk-app:not(.is-compact) .hk-panel-heading h2 { font-size: 22px; }
+  .hk-app:not(.is-compact) .hk-rate-list { gap: 9px; }
+  .hk-app:not(.is-compact) .hk-rate-list .hk-rate-row {
+    grid-template-columns: 28px minmax(0, 1fr) 48px;
+    gap: 8px;
+  }
+  .hk-app:not(.is-compact) .hk-rate-row .hk-rate-tier { height: 22px; }
+  .hk-app:not(.is-compact) .hk-rank-card .hk-panel-heading h2 { font-size: 25px; }
+  .hk-app:not(.is-compact) .hk-floating-actions { gap: 7px; }
+  .hk-app:not(.is-compact) .hk-floating-resource { right: calc(100% + 7px); }
+}
+
+@media (max-width: 360px) {
+  :root { --hk-mobile-nav-height: 58px; }
+  .hk-app:not(.is-compact) .hk-nav-dock .hk-nav {
+    min-height: 44px;
+    padding: 7px 4px;
+    font-size: 9px;
+  }
+  .hk-app:not(.is-compact) .hk-nav-dock .hk-icon { width: 15px; height: 15px; }
+  .hk-app:not(.is-compact) .hk-floating-resource {
+    right: calc(100% + 5px);
+    min-width: 78px;
+    padding: 5px 6px;
+  }
+  .hk-equipment-panel .hk-panel-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .hk-equipment-summary { text-align: left; }
+  .hk-page-heading h1 { font-size: 36px; }
+}
+
+@media (max-width: 840px) and (max-height: 480px) and (min-width: 641px) {
+  .hk-app:not(.is-compact) .hk-ritual-stage {
+    height: 100svh;
+    height: 100dvh;
+    min-height: 320px;
+  }
+  .hk-app:not(.is-compact) .hk-nav-dock {
+    position: absolute;
+    top: max(6px, var(--hk-safe-top));
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: auto;
+    min-width: 270px;
+    transform: translateX(-50%);
+  }
+  .hk-app:not(.is-compact).is-gacha .hk-nav-dock {
+    transform: translateX(-50%) translateY(-12px);
+  }
+  .hk-app:not(.is-compact) .hk-nav-dock .hk-nav {
+    min-height: 40px;
+    padding: 7px 10px;
+  }
+  .hk-app:not(.is-compact) .hk-floating-actions { bottom: max(10px, var(--hk-safe-bottom)); }
+  .hk-app:not(.is-compact) .hk-mobile-scroll-cue { top: calc(68px + var(--hk-safe-top)); }
+  .hk-app:not(.is-compact) .hk-ritual-status {
+    bottom: calc(var(--hk-action-size) + 20px + var(--hk-safe-bottom));
+  }
+  .hk-app:not(.is-compact) .hk-latest-roll {
+    bottom: calc(var(--hk-action-size) + 26px + var(--hk-safe-bottom));
+  }
+  .hk-content-page {
+    padding-top: calc(66px + var(--hk-safe-top));
+    padding-bottom: 28px;
+  }
+}
+
+.hk-app.is-compact .hk-ritual-stage {
+  position: absolute;
+  inset: 0;
+  height: 100dvh;
+  border-radius: 0;
+}
+

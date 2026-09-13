@@ -522,26 +522,29 @@ const SummonView = ({ session, catalog, phase, latest, autoRunning, opening, onD
       <div className="hk-hub-grid">
         <div className="hk-hub-center">
           <div className={`hk-ritual hk-phase-${phase} tier-${latest?.tier ?? 1} ${autoRunning ? "is-auto" : ""} ${zoomed ? "is-zoomed" : ""} ${opening ? "is-opening" : ""}`}>
+            <div className="hk-ritual-stage">
+              <div className="hk-ritual-canvas">
+                {worldFailed ? (
+                  <div className="hk-ritual-fallback" aria-hidden="true">
+                    <div className="hk-ritual-fallback-sky" style={{ backgroundImage: "url('/ui/generated/gacha-sanctum-bg.webp')" }} />
+                    <div className="hk-ritual-fallback-ground" style={{ backgroundImage: "url('/ui/generated/gacha-sanctum-ground.webp')" }} />
+                    <img src="/ui/generated/summoning-altar.webp" alt="" className="hk-ritual-fallback-altar" />
+                  </div>
+                ) : (
+                  <GachaVfx phase={phase} rarity={latest ? rarityForTier(latest.tier) : undefined} onReady={onWorldReady} onError={onWorldError} onProgress={onWorldProgress} />
+                )}
+              </div>
+              <span className="hk-mobile-scroll-cue" aria-hidden="true">Tỷ lệ · BXH phía dưới ↓</span>
+              <LatestRoll result={latest} catalog={catalog} onClose={onCloseLatest} closable={!autoRunning} />
+              <div className="hk-ritual-status" aria-live="polite"><span>{phaseLabel}</span><small>{countdown > 0 ? "Lượt kế tiếp mở sau khi đủ 4 giây" : phase === "idle" ? "Chờ Hồn Lệnh khai môn" : "Linh lực đang hội tụ"}</small></div>
+              <div className="hk-floating-actions">
+                <div className="hk-floating-resource"><Icon name="ticket" /><strong>{formatNumber(session.soulOrders)}</strong><span>HỒN LỆNH</span></div>
+                <button className="hk-float-button hk-float-single" type="button" aria-label="Triệu Dẫn x1" disabled={busy || autoRunning || !session.canDraw} onClick={onDraw}><span>X1</span></button>
+                <button className={`hk-float-button hk-float-auto ${autoRunning ? "is-running" : ""}`} type="button" aria-label={autoRunning ? "Dừng triệu dẫn tự động" : "Triệu dẫn tự động"} disabled={!autoRunning && (busy || !session.canDraw)} onClick={autoRunning ? onStop : onAuto}><span>TỰ ĐỘNG</span></button>
+              </div>
+            </div>
             <aside className="hk-ritual-overlay hk-info-float"><VaultRatePanel session={session} catalog={catalog} /></aside>
             <aside className="hk-ritual-overlay hk-rank-float"><LeaderboardPanel leaderboard={leaderboard} failed={leaderboardFailed} /></aside>
-            <div className="hk-ritual-canvas">
-              {worldFailed ? (
-                <div className="hk-ritual-fallback" aria-hidden="true">
-                  <div className="hk-ritual-fallback-sky" style={{ backgroundImage: "url('/ui/generated/gacha-sanctum-bg.webp')" }} />
-                  <div className="hk-ritual-fallback-ground" style={{ backgroundImage: "url('/ui/generated/gacha-sanctum-ground.webp')" }} />
-                  <img src="/ui/generated/summoning-altar.webp" alt="" className="hk-ritual-fallback-altar" />
-                </div>
-              ) : (
-                <GachaVfx phase={phase} rarity={latest ? rarityForTier(latest.tier) : undefined} onReady={onWorldReady} onError={onWorldError} onProgress={onWorldProgress} />
-              )}
-            </div>
-            <LatestRoll result={latest} catalog={catalog} onClose={onCloseLatest} closable={!autoRunning} />
-            <div className="hk-ritual-status" aria-live="polite"><span>{phaseLabel}</span><small>{countdown > 0 ? "Lượt kế tiếp mở sau khi đủ 4 giây" : phase === "idle" ? "Chờ Hồn Lệnh khai môn" : "Linh lực đang hội tụ"}</small></div>
-            <div className="hk-floating-actions">
-              <div className="hk-floating-resource"><Icon name="ticket" /><strong>{formatNumber(session.soulOrders)}</strong><span>HỒN LỆNH</span></div>
-              <button className="hk-float-button hk-float-single" type="button" aria-label="Triệu Dẫn x1" disabled={busy || autoRunning || !session.canDraw} onClick={onDraw}><span>X1</span></button>
-              <button className={`hk-float-button hk-float-auto ${autoRunning ? "is-running" : ""}`} type="button" aria-label={autoRunning ? "Dừng triệu dẫn tự động" : "Triệu dẫn tự động"} disabled={!autoRunning && (busy || !session.canDraw)} onClick={autoRunning ? onStop : onAuto}><span>TỰ ĐỘNG</span></button>
-            </div>
           </div>
         </div>
       </div>
@@ -604,6 +607,7 @@ export const App = () => {
   const stopRequested = useRef(false);
   const ritualZoomedRef = useRef(false);
   const worldRef = useRef<GachaWorldController | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
   const catalogRef = useRef<CatalogItem[]>([]);
   const cooldownTimerRef = useRef<number | null>(null);
   const busyRef = useRef(false);
@@ -733,6 +737,7 @@ export const App = () => {
 
   const drawOne = async () => {
     sessionRequestVersionRef.current += 1;
+    mainRef.current?.scrollTo({ top: 0, behavior: "auto" });
     const needsZoom = !ritualZoomedRef.current;
     if (needsZoom) {
       ritualZoomedRef.current = true;
@@ -778,6 +783,7 @@ export const App = () => {
       worldRef.current?.setResultItem(catalogItem?.assetKey ?? null, result.tier);
       await sleep(Math.max(0, GACHA_ANIMATION_MS - (performance.now() - startedAt)));
       setLatest(result);
+      window.requestAnimationFrame(() => mainRef.current?.scrollTo({ top: 0, behavior: "auto" }));
       setPhase("result");
       cooldownEndsAt = gachaCycleDeadline(startedAt, performance.now());
       updateCountdown();
@@ -885,6 +891,10 @@ export const App = () => {
     : loadProgress < 80 ? "Tải tài nguyên Thánh Địa..."
     : loadProgress < 100 ? "Khởi động Linh Trận..."
     : "Thánh Địa sẵn sàng!";
+  const selectView = (nextView: View) => {
+    setView(nextView);
+    mainRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  };
 
   return (
     <>
@@ -894,9 +904,9 @@ export const App = () => {
           aria-hidden={isLoading || undefined}
           style={isLoading ? { opacity: 0, pointerEvents: "none" } : undefined}
         >
-          <nav className="hk-nav-dock" aria-label="Điều hướng Hồn Khí"><NavButton view="summon" current={effectiveView} label="Triệu Dẫn" icon="spark" onClick={setView} /><NavButton view="equipment" current={effectiveView} label="Trang Bị" icon="bag" onClick={setView} /><NavButton view="catalog" current={effectiveView} label="Đồ Giám" icon="book" onClick={setView} /></nav>
+          <nav className="hk-nav-dock" aria-label="Điều hướng Hồn Khí"><NavButton view="summon" current={effectiveView} label="Triệu Dẫn" icon="spark" onClick={selectView} /><NavButton view="equipment" current={effectiveView} label="Trang Bị" icon="bag" onClick={selectView} /><NavButton view="catalog" current={effectiveView} label="Đồ Giám" icon="book" onClick={selectView} /></nav>
           {error && <p className="hk-error" role="alert">{error}</p>}
-          <main className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} onWorldProgress={handleWorldProgress} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} countdown={countdown} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
+          <main ref={mainRef} className="hk-main">{effectiveView === "summon" && <SummonView session={session} catalog={catalog} phase={phase} latest={latestView} autoRunning={autoRunning} opening={opening} onDraw={draw} onAuto={autoDraw} onStop={stop} onCloseLatest={closeLatest} busy={busy} worldFailed={worldFailed} onWorldReady={handleWorldReady} onWorldError={handleWorldError} onWorldProgress={handleWorldProgress} leaderboard={leaderboard} leaderboardFailed={leaderboardFailed} countdown={countdown} />}{effectiveView === "equipment" && <EquipmentView session={session} catalog={catalog} />}{effectiveView === "catalog" && <CatalogView catalog={catalog} collection={session.collection} collectionSummary={session.collectionSummary} totalRolls={session.totalRolls} />}</main>
         </div>
       )}
       {isLoading && (
