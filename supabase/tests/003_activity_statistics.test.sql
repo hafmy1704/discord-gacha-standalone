@@ -27,9 +27,7 @@ begin
   perform public.reset_voice_activity_sessions('test-guild');
   perform public.record_voice_activity('test-guild', 'test-user', 'test-voice', true, '2026-09-14 00:59:30+00'::timestamptz);
   perform public.record_voice_activity('test-guild', 'test-user', null, false, '2026-09-14 02:00:30+00'::timestamptz);
-  if (select sum(voice_seconds) from public.activity_hourly_buckets where guild_id = 'test-guild' and user_id = 'test-user' and bucket_start = '2026-09-14 00:00:00+00'::timestamptz) <> 30 then raise exception 'first voice bucket mismatch'; end if;
-  if (select sum(voice_seconds) from public.activity_hourly_buckets where guild_id = 'test-guild' and user_id = 'test-user' and bucket_start = '2026-09-14 01:00:00+00'::timestamptz) <> 3600 then raise exception 'middle voice bucket mismatch'; end if;
-  if (select sum(voice_seconds) from public.activity_hourly_buckets where guild_id = 'test-guild' and user_id = 'test-user' and bucket_start = '2026-09-14 02:00:00+00'::timestamptz) <> 30 then raise exception 'last voice bucket mismatch'; end if;
+  if (select sum(voice_seconds) from public.activity_hourly_buckets where guild_id = 'test-guild' and user_id = 'test-user' and bucket_start = '2026-09-13 17:00:00+00'::timestamptz) <> 3660 then raise exception 'daily voice bucket mismatch'; end if;
   perform public.reset_voice_activity_sessions('test-guild');
   if exists (select 1 from public.activity_voice_sessions where guild_id = 'test-guild') then raise exception 'voice reset failed'; end if;
   leaderboard := public.get_activity_leaderboard('test-guild', 'test-user', 'chat', 10);

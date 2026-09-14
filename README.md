@@ -196,11 +196,12 @@ Vào Supabase Dashboard → SQL Editor, chạy theo thứ tự:
 ```
 supabase/migrations/001_initial_schema.sql
 supabase/migrations/002_voice_activity_reward.sql
+supabase/migrations/003_activity_statistics.sql
 ```
 
 `001_initial_schema.sql` tạo schema nền cho database mới. Sau đó luôn chạy `002_voice_activity_reward.sql` để cài voice reward, queue thông báo lên cấp và hoàn tất quyền/RLS. Không chạy SQL migration production trực tiếp từ bot.
 
-Database mới: chạy `001` rồi `002`. Database đã có dữ liệu từ bản cũ: chỉ chạy `002`; migration này giữ XP, lượt quay, Hồn Khí/trang bị/collection, chỉ xóa cột awakening và đổi cách tính level về level 0. Không chạy lại `001` trên production.
+Database mới: chạy `001`, `002`, rồi `003`. `003_activity_statistics.sql` đã gộp thống kê hoạt động theo ngày và level leaderboard. Database đã chạy các migration `003/004/005` cũ không được chạy lại file gộp này; cần giữ migration history cũ hoặc tạo migration nâng cấp riêng.
 
 
 Voice reward chạy theo session: bot ghi nhận lúc vào voice, quét mỗi phút, cộng đủ từng bucket 10 phút khi còn ở voice. User rời voice được chốt bucket cuối; restart bot không bù thời gian offline. `level_up_events` lưu queue thông báo, retry khi Discord gửi lỗi.

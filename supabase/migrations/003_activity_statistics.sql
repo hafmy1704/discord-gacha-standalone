@@ -47,9 +47,13 @@ grant all on public.activity_hourly_buckets, public.activity_message_receipts, p
 
 create or replace function public.activity_bucket_start(p_at timestamptz)
 returns timestamptz language sql immutable as $$
-  select date_trunc('hour', p_at);
+  select date_trunc('day', p_at at time zone 'Asia/Bangkok') at time zone 'Asia/Bangkok';
 $$;
 
+create or replace function public.activity_window_start(p_window interval)
+returns timestamptz language sql stable as $$
+  select date_trunc('day', now() at time zone 'Asia/Bangkok') at time zone 'Asia/Bangkok' - (p_window - interval '1 day');
+$$;
 create or replace function public.record_chat_activity(p_guild_id text, p_user_id text, p_channel_id text, p_message_id text, p_created_at timestamptz default now())
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare bucket timestamptz := public.activity_bucket_start(p_created_at); inserted integer;
@@ -80,7 +84,7 @@ begin
     v_cursor_at := v_session.last_seen_at;
     while v_cursor_at < p_now loop
       bucket := public.activity_bucket_start(v_cursor_at);
-      v_bucket_end := bucket + interval '1 hour';
+      v_bucket_end := bucket + interval '1 day';
       v_segment_end := least(v_bucket_end, p_now);
       v_segment_seconds := greatest(0, floor(extract(epoch from (v_segment_end - v_cursor_at)))::integer);
       if v_segment_seconds > 0 then
@@ -100,7 +104,7 @@ end;
 $$;
 
 create or replace function public.reset_voice_activity_sessions(p_guild_id text)
-returns bigint language plpgsql security definer set search_path = public as $
+returns bigint language plpgsql security definer set search_path = public as $$
 declare session_row record; reset_count bigint := 0;
 begin
   for session_row in
@@ -113,18 +117,18 @@ begin
   end loop;
   return reset_count;
 end;
-$;
+$$;
 create or replace function public.get_activity_window(p_guild_id text, p_user_id text, p_window interval)
 returns jsonb language sql security definer set search_path = public as $$
   select jsonb_build_object('chat', coalesce(sum(chat_messages), 0), 'voiceSeconds', coalesce(sum(voice_seconds), 0))
-  from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= now() - p_window;
+  from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= public.activity_window_start(p_window);
 $$;
 
 create or replace function public.get_activity_channels(p_guild_id text, p_user_id text, p_window interval)
 returns jsonb language sql security definer set search_path = public as $$
   select jsonb_build_object(
-    'chat', coalesce((select jsonb_build_object('channelId', channel_id, 'value', sum(chat_messages)) from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= now() - p_window and chat_messages > 0 group by channel_id order by sum(chat_messages) desc, channel_id limit 1), jsonb_build_object('channelId', null, 'value', 0)),
-    'voice', coalesce((select jsonb_build_object('channelId', channel_id, 'value', sum(voice_seconds)) from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= now() - p_window and voice_seconds > 0 group by channel_id order by sum(voice_seconds) desc, channel_id limit 1), jsonb_build_object('channelId', null, 'value', 0))
+    'chat', coalesce((select jsonb_build_object('channelId', channel_id, 'value', sum(chat_messages)) from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= public.activity_window_start(p_window) and chat_messages > 0 group by channel_id order by sum(chat_messages) desc, channel_id limit 1), jsonb_build_object('channelId', null, 'value', 0)),
+    'voice', coalesce((select jsonb_build_object('channelId', channel_id, 'value', sum(voice_seconds)) from public.activity_hourly_buckets where guild_id = p_guild_id and user_id = p_user_id and bucket_start >= public.activity_window_start(p_window) and voice_seconds > 0 group by channel_id order by sum(voice_seconds) desc, channel_id limit 1), jsonb_build_object('channelId', null, 'value', 0))
   );
 $$;
 
@@ -144,11 +148,11 @@ begin
   if p_metric not in ('chat', 'voice') then raise exception using message = 'invalid_activity_metric'; end if;
   if p_limit is null or p_limit < 1 or p_limit > 25 then raise exception using message = 'invalid_activity_limit'; end if;
   if p_metric = 'chat' then
-    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= now() - interval '30 days' group by user_id order by value desc, user_id limit p_limit) x;
-    select to_jsonb(x) into self_row from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= now() - interval '30 days' group by user_id) x where user_id = p_user_id;
+    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id order by value desc, user_id limit p_limit) x;
+    select to_jsonb(x) into self_row from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id) x where user_id = p_user_id;
   else
-    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= now() - interval '30 days' group by user_id order by value desc, user_id limit p_limit) x;
-    select to_jsonb(x) into self_row from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= now() - interval '30 days' group by user_id) x where user_id = p_user_id;
+    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id order by value desc, user_id limit p_limit) x;
+    select to_jsonb(x) into self_row from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id) x where user_id = p_user_id;
   end if;
   return jsonb_build_object('metric', p_metric, 'entries', rows, 'self', self_row);
 end;
@@ -158,12 +162,106 @@ create or replace function public.cleanup_activity_statistics()
 returns bigint language plpgsql security definer set search_path = public as $$
 declare removed bigint;
 begin
-  delete from public.activity_hourly_buckets where bucket_start < now() - interval '35 days';
+  delete from public.activity_hourly_buckets where bucket_start < public.activity_window_start(interval '35 days');
   get diagnostics removed = row_count;
   delete from public.activity_message_receipts where created_at < now() - interval '35 days';
   return removed;
 end;
 $$;
 
+revoke all on function public.activity_window_start(interval) from public, anon, authenticated;
+
+grant execute on function public.activity_window_start(interval) to service_role;
+
 revoke all on function public.record_chat_activity(text, text, text, text, timestamptz), public.record_voice_activity(text, text, text, boolean, timestamptz), public.reset_voice_activity_sessions(text), public.get_activity_window(text, text, interval), public.get_activity_channels(text, text, interval), public.get_activity_stats(text, text), public.get_activity_leaderboard(text, text, text, integer), public.cleanup_activity_statistics() from public, anon, authenticated;
 grant execute on function public.record_chat_activity(text, text, text, text, timestamptz), public.record_voice_activity(text, text, text, boolean, timestamptz), public.reset_voice_activity_sessions(text), public.get_activity_window(text, text, interval), public.get_activity_channels(text, text, interval), public.get_activity_stats(text, text), public.get_activity_leaderboard(text, text, text, integer), public.cleanup_activity_statistics() to service_role;
+
+-- Level and cultivation leaderboard.
+
+create or replace function public.get_level_leaderboard(
+  p_guild_id text,
+  p_user_id text,
+  p_limit integer default 10
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+  safe_limit integer := greatest(1, least(coalesce(p_limit, 10), 25));
+begin
+  with ranked as (
+    select
+      p.user_id,
+      public.cultivation_level(p.cultivation_xp) as cultivation_level,
+      public.hon_khi_vault_level(p.vault_xp) as vault_level,
+      round(
+        public.cultivation_level(p.cultivation_xp)::numeric * 100
+        + coalesce(sum(e.power), 0),
+        2
+      ) as power,
+      coalesce(max(e.tier), 0) as highest_tier,
+      row_number() over (
+        order by
+          public.cultivation_level(p.cultivation_xp) desc,
+          round(
+            public.cultivation_level(p.cultivation_xp)::numeric * 100
+            + coalesce(sum(e.power), 0),
+            2
+          ) desc,
+          p.user_id
+      ) as rank,
+      count(*) over () as total_players
+    from public.players p
+    left join public.hon_khi_equipped e
+      on e.guild_id = p.guild_id and e.user_id = p.user_id
+    where p.guild_id = p_guild_id
+    group by p.user_id, p.cultivation_xp, p.vault_xp
+  )
+  select jsonb_build_object(
+    'entries', coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'userId', user_id,
+          'rank', rank,
+          'power', power,
+          'vaultLevel', vault_level,
+          'cultivationLevel', cultivation_level,
+          'highestTier', highest_tier,
+          'isSelf', user_id = p_user_id
+        ) order by rank
+      ) filter (where rank <= safe_limit),
+      '[]'::jsonb
+    ),
+    'self', (
+      select jsonb_build_object(
+        'userId', user_id,
+        'rank', rank,
+        'power', power,
+        'vaultLevel', vault_level,
+        'cultivationLevel', cultivation_level,
+        'highestTier', highest_tier,
+        'isSelf', true
+      )
+      from ranked
+      where user_id = p_user_id
+    ),
+    'totalPlayers', coalesce(max(total_players), 0)
+  )
+  into result
+  from ranked;
+
+  return coalesce(
+    result,
+    jsonb_build_object('entries', '[]'::jsonb, 'self', null, 'totalPlayers', 0)
+  );
+end;
+$$;
+
+revoke all on function public.get_level_leaderboard(text, text, integer)
+  from public, anon, authenticated;
+grant execute on function public.get_level_leaderboard(text, text, integer)
+  to service_role;
