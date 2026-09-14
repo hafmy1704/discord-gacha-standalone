@@ -187,6 +187,19 @@ export function createDatabase({
         totalPlayers: Number(leaderboard?.totalPlayers ?? 0),
       };
     },
+    async getLevelLeaderboard({ guildId, userId, limit = 10 }) {
+      const leaderboard = await rpc("get_level_leaderboard", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_limit: limit,
+      });
+      const mapEntry = (entry) => mapLeaderboardEntry(entry);
+      return {
+        entries: (leaderboard?.entries ?? []).map(mapEntry),
+        self: leaderboard?.self ? mapEntry(leaderboard.self) : null,
+        totalPlayers: Number(leaderboard?.totalPlayers ?? 0),
+      };
+    },
     // ── Soul orders ───────────────────────────────────────────
 
     async grantSoulOrders({
@@ -262,6 +275,48 @@ export function createDatabase({
         p_user_id: userId,
         p_channel_id: channelId ?? null,
       });
+    },
+
+    async recordChatActivity({ guildId, userId, channelId, messageId }) {
+      return rpc("record_chat_activity", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_channel_id: channelId,
+        p_message_id: messageId,
+      });
+    },
+
+    async recordVoiceActivity({ guildId, userId, channelId = null, active = true }) {
+      return rpc("record_voice_activity", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_channel_id: channelId,
+        p_active: Boolean(active),
+      });
+    },
+
+    async resetVoiceActivitySessions(guildId) {
+      return rpc("reset_voice_activity_sessions", { p_guild_id: guildId });
+    },
+
+    async getActivityStats({ guildId, userId }) {
+      return mapActivityStats(await rpc("get_activity_stats", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+      }));
+    },
+
+    async getActivityLeaderboard({ guildId, userId, metric, limit = 10 }) {
+      return mapActivityLeaderboard(await rpc("get_activity_leaderboard", {
+        p_guild_id: guildId,
+        p_user_id: userId,
+        p_metric: metric,
+        p_limit: limit,
+      }));
+    },
+
+    async cleanupActivityStatistics() {
+      return rpc("cleanup_activity_statistics", {});
     },
 
     async claimLevelUpEvents(limit = 50) {
@@ -409,6 +464,49 @@ function mapLeaderboardEntry(value) {
     highestTier: Number(value.highestTier ?? 0),
     tag: anonymiseUserId(value.userId),
     isSelf: Boolean(value.isSelf),
+  };
+}
+
+function mapActivityStats(value) {
+  const normalizeWindow = (window) => ({
+    chat: Number(window?.chat ?? 0),
+    voiceSeconds: Number(window?.voiceSeconds ?? 0),
+  });
+  return {
+    total: normalizeWindow(value?.total),
+    windows: {
+      one: normalizeWindow(value?.windows?.["1"]),
+      seven: normalizeWindow(value?.windows?.["7"]),
+      thirty: normalizeWindow(value?.windows?.["30"]),
+    },
+    channels: {
+      chat: {
+        channelId: value?.channels?.chat?.channelId ?? null,
+        value: Number(value?.channels?.chat?.value ?? 0),
+      },
+      voice: {
+        channelId: value?.channels?.voice?.channelId ?? null,
+        value: Number(value?.channels?.voice?.value ?? 0),
+      },
+    },
+  };
+}
+
+function mapActivityLeaderboard(value) {
+  return {
+    metric: value?.metric ?? "chat",
+    entries: (value?.entries ?? []).map((entry) => ({
+      userId: String(entry.user_id ?? entry.userId ?? ""),
+      value: Number(entry.value ?? 0),
+      rank: Number(entry.rank ?? 0),
+    })),
+    self: value?.self
+      ? {
+          userId: String(value.self.user_id ?? value.self.userId ?? ""),
+          value: Number(value.self.value ?? 0),
+          rank: Number(value.self.rank ?? 0),
+        }
+      : null,
   };
 }
 

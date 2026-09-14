@@ -23,7 +23,19 @@ const numberFormat = new Intl.NumberFormat("vi-VN", {
 
 export const RANKING_COMMAND = new SlashCommandBuilder()
   .setName("ranking")
-  .setDescription("Xem Top 10 người chơi có lực chiến cao nhất")
+  .setDescription("Xem bảng xếp hạng toàn server")
+  .addStringOption((option) =>
+    option
+      .setName("loai")
+      .setDescription("Loại bảng xếp hạng")
+      .setRequired(true)
+      .addChoices(
+        { name: "Voice", value: "voice" },
+        { name: "Chat", value: "chat" },
+        { name: "Lực chiến", value: "power" },
+        { name: "Cấp độ", value: "level" },
+      ),
+  )
   .addBooleanOption((option) =>
     option
       .setName("all")
@@ -35,8 +47,8 @@ export function rankingReplyFlags(showAll = false) {
 }
 
 export function deferRankingReply(interaction) {
-  const showAll = interaction.options.getBoolean("all") === true;
-  return interaction.deferReply({ flags: rankingReplyFlags(showAll) });
+  interaction.options.getBoolean("all");
+  return interaction.deferReply({ flags: 0 });
 }
 
 export function topRankingEntries(leaderboard) {
@@ -47,6 +59,7 @@ export function topRankingEntries(leaderboard) {
 
 export async function buildRankingCard({
   leaderboard,
+  metric = "power",
   avatarLoader = loadDiscordAvatar,
   background = RANKING_TEMPLATE_PATH,
 } = {}) {
@@ -81,7 +94,7 @@ export async function buildRankingCard({
   );
 
   const composites = [
-    { input: Buffer.from(buildHeaderSvg(entries.length, leaderboard?.totalPlayers)) },
+    { input: Buffer.from(buildHeaderSvg(metric, entries.length, leaderboard?.totalPlayers)) },
   ];
   for (let index = 0; index < avatars.length; index += 1) {
     if (!avatars[index]) continue;
@@ -92,7 +105,7 @@ export async function buildRankingCard({
       top: geometry.top,
     });
   }
-  composites.push({ input: Buffer.from(buildContentSvg(entries, avatars)) });
+  composites.push({ input: Buffer.from(buildContentSvg(metric, entries, avatars)) });
 
   const card = await sharp(background)
     .resize(RANKING_CARD_WIDTH, RANKING_CARD_HEIGHT, {
@@ -146,6 +159,7 @@ function normalizeEntry(entry, index) {
   return {
     rank: Math.max(1, safeInteger(entry?.rank, index + 1)),
     power: Math.max(0, safeNumber(entry?.power, 0)),
+    value: Math.max(0, safeNumber(entry?.value, 0)),
     vaultLevel: Math.max(1, safeInteger(entry?.vaultLevel, 1)),
     cultivationLevel,
     highestTier: Math.max(0, Math.min(10, safeInteger(entry?.highestTier, 0))),
@@ -200,21 +214,27 @@ function avatarGeometry(index) {
   };
 }
 
-function buildHeaderSvg(entryCount, totalPlayers) {
+function buildHeaderSvg(metric, entryCount, totalPlayers) {
   const safeTotal = Math.max(entryCount, safeInteger(totalPlayers, entryCount));
+  const labels = {
+    power: ["TOP 10 CAO THỦ LỰC CHIẾN", "LỰC CHIẾN"],
+    level: ["TOP 10 CẤP ĐỘ TU LUYỆN", "CẤP ĐỘ"],
+    chat: ["TOP 10 TƯƠNG TÁC CHAT · 30 NGÀY", "TIN NHẮN"],
+    voice: ["TOP 10 TƯƠNG TÁC VOICE · 30 NGÀY", "GIỜ VOICE"],
+  }[metric] ?? ["TOP 10 CAO THỦ LỰC CHIẾN", "LỰC CHIẾN"];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${RANKING_CARD_WIDTH}" height="${RANKING_CARD_HEIGHT}">
     <defs>
       <filter id="titleGlow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
     <g text-anchor="middle" filter="url(#titleGlow)">
       <text x="512" y="137" fill="#f8dca0" stroke="#513518" stroke-width="1" paint-order="stroke" font-family="Noto Serif, serif" font-size="47" font-weight="800" letter-spacing="7">THIÊN CƠ BẢNG</text>
-      <text x="512" y="173" fill="#7de0d0" font-family="Noto Sans, sans-serif" font-size="14" font-weight="700" letter-spacing="5">TOP 10 CAO THỦ LỰC CHIẾN</text>
+      <text x="512" y="173" fill="#7de0d0" font-family="Noto Sans, sans-serif" font-size="14" font-weight="700" letter-spacing="3">${labels[0]}</text>
     </g>
     <text x="512" y="231" text-anchor="middle" fill="#d7bb82" font-family="Noto Sans, sans-serif" font-size="13" font-weight="600" letter-spacing="2.5">${safeTotal.toLocaleString("vi-VN")} NGƯỜI CHƠI ĐÃ GHI DANH</text>
   </svg>`;
 }
 
-function buildContentSvg(entries, avatars) {
+function buildContentSvg(metric, entries, avatars) {
   const medalColors = ["#ffe194", "#e6f0f2", "#e7a778"];
   const rows = entries.map((entry, index) => {
     const {
@@ -239,9 +259,9 @@ function buildContentSvg(entries, avatars) {
       <text x="232" y="${centerY - 9}" fill="${accent}" font-family="Noto Serif, serif" font-size="${index < 3 ? 21 : 17}" font-weight="800">#${entry.rank}</text>
       <text x="${index < 3 ? 284 : 275}" y="${centerY - 9}" fill="#fff0cd" stroke="#071217" stroke-width=".7" paint-order="stroke" font-family="Noto Serif, serif" font-size="${nameFontSize}" font-weight="700">${escapeXml(entry.displayName)}</text>
       ${selfBadge}
-      <text x="232" y="${centerY + 25}" fill="#a9c9c2" stroke="#071217" stroke-width=".45" paint-order="stroke" font-size="${index < 3 ? 14.5 : 13.5}">${escapeXml(role)} · Tu vi ${entry.cultivationLevel}  |  Linh Khố ${entry.vaultLevel}  |  Hồn Khí ${tier}</text>
-      <text x="824" y="${centerY - 5}" text-anchor="end" fill="${index < 3 ? accent : "#f2d28e"}" stroke="#071217" stroke-width=".8" paint-order="stroke" font-size="${index < 3 ? 29 : 25}" font-weight="800">${numberFormat.format(entry.power)}</text>
-      <text x="824" y="${centerY + 21}" text-anchor="end" fill="#80a9a1" font-size="11" font-weight="700" letter-spacing="1.8">LỰC CHIẾN</text>
+      <text x="232" y="${centerY + 25}" fill="#a9c9c2" stroke="#071217" stroke-width=".45" paint-order="stroke" font-size="${index < 3 ? 14.5 : 13.5}">${escapeXml(metric === "power" || metric === "level" ? `${role} · Tu vi ${entry.cultivationLevel}  |  Linh Khố ${entry.vaultLevel}  |  Hồn Khí ${tier}` : metric === "chat" ? "Tương tác chat trong 30 ngày gần nhất" : "Thời gian voice trong 30 ngày gần nhất")}</text>
+      <text x="824" y="${centerY - 5}" text-anchor="end" fill="${index < 3 ? accent : "#f2d28e"}" stroke="#071217" stroke-width=".8" paint-order="stroke" font-size="${index < 3 ? 29 : 25}" font-weight="800">${formatMetricValue(metric, entry)}</text>
+      <text x="824" y="${centerY + 21}" text-anchor="end" fill="#80a9a1" font-size="11" font-weight="700" letter-spacing="1.8">${metric === "power" ? "LỰC CHIẾN" : metric === "level" ? "CẤP ĐỘ" : metric === "chat" ? "TIN NHẮN" : "GIỜ VOICE"}</text>
     </g>`;
   }).join("");
   const empty = entries.length === 0
@@ -251,6 +271,13 @@ function buildContentSvg(entries, avatars) {
     ${rows}${empty}
     <g font-family="Noto Serif, serif" text-anchor="middle"><text x="512" y="1482" fill="#d3b77f" stroke="#071217" stroke-width=".5" paint-order="stroke" font-size="13" letter-spacing="3">THIÊN CƠ DẪN LỘ · HỒN KHÍ GIÁNG THẾ</text></g>
   </svg>`;
+}
+
+function formatMetricValue(metric, entry) {
+  if (metric === "chat") return numberFormat.format(entry.value);
+  if (metric === "voice") return (entry.value / 3600).toFixed(1);
+  if (metric === "level") return numberFormat.format(entry.cultivationLevel);
+  return numberFormat.format(entry.power);
 }
 
 function escapeXml(value) {

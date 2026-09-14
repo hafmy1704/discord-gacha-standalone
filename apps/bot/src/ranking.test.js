@@ -25,11 +25,14 @@ const entry = (rank, overrides = {}) => ({
   ...overrides,
 });
 
-test("ranking command is private by default and public only for all=true", async () => {
+test("ranking command is public for every ranking type", async () => {
   const command = RANKING_COMMAND.toJSON();
+  const metricOption = command.options.find((option) => option.name === "loai");
   const allOption = command.options.find((option) => option.name === "all");
 
   assert.equal(command.name, "ranking");
+  assert.equal(metricOption?.required, true);
+  assert.deepEqual(metricOption?.choices.map((choice) => choice.value), ["voice", "chat", "power", "level"]);
   assert.equal(allOption?.type, 5);
   assert.equal(allOption?.required ?? false, false);
   assert.equal(rankingReplyFlags(), MessageFlags.Ephemeral);
@@ -43,11 +46,7 @@ test("ranking command is private by default and public only for all=true", async
       deferReply: async ({ flags }) => deferredFlags.push(flags),
     });
   }
-  assert.deepEqual(deferredFlags, [
-    MessageFlags.Ephemeral,
-    MessageFlags.Ephemeral,
-    0,
-  ]);
+  assert.deepEqual(deferredFlags, [0, 0, 0]);
 });
 
 test("ranking presentation preserves database order and clamps to ten rows", () => {

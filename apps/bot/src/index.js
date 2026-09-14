@@ -23,6 +23,7 @@ import {
   buildRankingCard,
   deferRankingReply,
 } from "./ranking.js";
+import { buildActivityStatCard } from "./activity-card.js";
 import { createMiniappServer } from "./server.js";
 import { validateChatContent } from "./content.js";
 import { buildHonKhiCatalog } from "./hon-khi.js";
@@ -109,6 +110,16 @@ const miniappServer = createMiniappServer({
 });
 
 let whitelistMutation = Promise.resolve();
+const voiceActivityMutations = new Map();
+
+function withVoiceActivityMutation(userId, operation) {
+  const previous = voiceActivityMutations.get(userId) ?? Promise.resolve();
+  const current = previous.catch(() => {}).then(operation);
+  voiceActivityMutations.set(userId, current);
+  return current.finally(() => {
+    if (voiceActivityMutations.get(userId) === current) voiceActivityMutations.delete(userId);
+  });
+}
 
 // ── Slash command definitions ─────────────────────────────────────────────────
 
@@ -145,6 +156,9 @@ const COMMANDS = [
         .setDescription("Bỏ trống để xem hồ sơ của bản thân"),
     ),
   RANKING_COMMAND,
+  new SlashCommandBuilder()
+    .setName("stat")
+    .setDescription("Xem thống kê hoạt động của bản thân"),
   new SlashCommandBuilder()
     .setName("hon-lenh")
     .setDescription("Điều chỉnh Hồn Lệnh cho người chơi")
@@ -186,6 +200,9 @@ client.once(Events.ClientReady, async (readyClient) => {
           .catch((error) =>
             console.error("activity log cleanup failed", error.message),
           );
+        database.cleanupActivityStatistics().catch((error) =>
+          console.error("activity statistics cleanup failed", error.message),
+        );
       },
       24 * 60 * 60 * 1000,
     );
@@ -305,28 +322,91 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.commandName === "stat") {
+      await deferActivityReply(interaction);
+      const channelId = interaction.member?.voice?.channelId ?? null;
+      await withVoiceActivityMutation(interaction.user.id, () => database.recordVoiceActivity({
+        guildId: GUILD_ID,
+        userId: interaction.user.id,
+        channelId,
+        active: Boolean(channelId),
+      })).catch((error) => console.error("stat voice flush failed", error.message));
+      const [stats, chatRank, voiceRank] = await Promise.all([
+        database.getActivityStats({ guildId: GUILD_ID, userId: interaction.user.id }),
+        database.getActivityLeaderboard({ guildId: GUILD_ID, userId: interaction.user.id, metric: "chat" }),
+        database.getActivityLeaderboard({ guildId: GUILD_ID, userId: interaction.user.id, metric: "voice" }),
+      ]);
+      stats.ranks = { chat: chatRank.self, voice: voiceRank.self };
+      const channelNames = await resolveActivityChannelNames(interaction.guild, stats.channels);
+      const card = await buildActivityStatCard({
+        displayName: interaction.member?.displayName ?? interaction.user.globalName ?? interaction.user.username,
+        username: interaction.user.username,
+        avatarUrl: interaction.user.displayAvatarURL({ extension: "png", size: 128 }),
+        joinedAt: interaction.member?.joinedAt,
+        createdAt: interaction.user.createdAt,
+        stats,
+        channelNames,
+      });
+      await interaction.editReply({
+        files: [new AttachmentBuilder(card, { name: "activity-stat.png" })],
+      });
+      return;
+    }
+
     // /ranking
     if (interaction.commandName === "ranking") {
       await deferRankingReply(interaction);
       try {
-        const storedLeaderboard = await database.getHonKhiLeaderboard({
-          guildId: GUILD_ID,
-          userId: interaction.user.id,
-          limit: 10,
-        });
-        const leaderboard = await presentLeaderboard(storedLeaderboard, {
-          resolveUser: resolveLeaderboardUser,
-        });
-        const card = await buildRankingCard({ leaderboard });
+        const metric = interaction.options.getString("loai", true);
+        let storedLeaderboard;
+        if (metric === "power") {
+          storedLeaderboard = await database.getHonKhiLeaderboard({
+            guildId: GUILD_ID,
+            userId: interaction.user.id,
+            limit: 10,
+          });
+        } else if (metric === "level") {
+          storedLeaderboard = await database.getLevelLeaderboard({
+            guildId: GUILD_ID,
+            userId: interaction.user.id,
+            limit: 10,
+          });
+        } else {
+          storedLeaderboard = await database.getActivityLeaderboard({
+            guildId: GUILD_ID,
+            userId: interaction.user.id,
+            metric,
+            limit: 10,
+          });
+          const resolveActivityEntry = async (entry) => {
+            const profile = await resolveLeaderboardUser(entry.userId);
+            return {
+              ...entry,
+              displayName: profile?.displayName ?? "Đạo Hữu",
+              avatarUrl: profile?.avatarUrl ?? null,
+              isSelf: entry.userId === interaction.user.id,
+            };
+          };
+          storedLeaderboard = {
+            ...storedLeaderboard,
+            entries: await Promise.all(storedLeaderboard.entries.map(resolveActivityEntry)),
+            self: storedLeaderboard.self
+              ? await resolveActivityEntry(storedLeaderboard.self)
+              : null,
+            totalPlayers: storedLeaderboard.entries.length,
+          };
+        }
+        const leaderboard = metric === "chat" || metric === "voice"
+          ? storedLeaderboard
+          : await presentLeaderboard(storedLeaderboard, {
+              resolveUser: resolveLeaderboardUser,
+            });
+        const card = await buildRankingCard({ leaderboard, metric });
         await interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(0xd9ad60)
-              .setImage("attachment://ranking-top10.png"),
-          ],
           files: [
             new AttachmentBuilder(card, { name: "ranking-top10.png" }),
           ],
+          embeds: [],
           allowedMentions: { parse: [] },
         });
       } catch (error) {
@@ -481,6 +561,15 @@ client.on(Events.MessageCreate, async (message) => {
   )
     return;
   try {
+    await database.recordChatActivity({
+      guildId: message.guildId,
+      userId: message.author.id,
+      channelId: message.channelId,
+      messageId: message.id,
+    }).catch((error) => console.error("chat statistics failed", {
+      messageId: message.id,
+      error: error.message,
+    }));
     const config = await database.getGuildRewardConfig(message.guildId);
     if (!config?.channelIds.has(message.channelId)) return;
 
@@ -526,14 +615,29 @@ const VOICE_SCAN_INTERVAL_MS = 60 * 1000;
 async function initializeVoiceSessions(guild) {
   const config = await database.getGuildRewardConfig(guild.id);
   const selected = config?.channelIds ?? new Set();
+await database.resetVoiceActivitySessions(guild.id).catch((error) => {
+    if (error.status === 404) {
+      console.error("voice analytics reset unavailable; apply migration 003", error.message);
+      return;
+    }
+    throw error;
+  });
   const requests = [];
   for (const state of guild.voiceStates.cache.values()) {
     if (!state.channelId || state.member?.user.bot) continue;
+    requests.push(withVoiceActivityMutation(state.id, () => database.recordVoiceActivity({
+      guildId: guild.id,
+      userId: state.id,
+      channelId: state.channelId,
+      active: true,
+    })).catch((error) => console.error("voice statistics failed", {
+      userId: state.id,
+      error: error.message,
+    })));
     requests.push(database.setVoiceSession({ guildId: guild.id, userId: state.id, active: selected.has(state.channelId) }));
   }
   await Promise.allSettled(requests);
 }
-
 async function awardVoiceMember(guild, userId, channelId, selectedChannels) {
   if (selectedChannels && !selectedChannels.has(channelId)) return;
   const result = await database.awardVoiceActivity({ guildId: guild.id, userId, channelId });
@@ -543,7 +647,6 @@ async function awardVoiceMember(guild, userId, channelId, selectedChannels) {
   }
   if (!result?.skipped) await flushLevelUpEvents();
 }
-
 async function scanVoice() {
   const guild = client.guilds.cache.get(GUILD_ID);
   if (!guild) return;
@@ -551,17 +654,32 @@ async function scanVoice() {
   const config = await database.getGuildRewardConfig(GUILD_ID);
   const selected = config?.channelIds ?? new Set();
   for (const state of guild.voiceStates.cache.values()) {
-    if (!state.channelId || state.member?.user.bot || !selected.has(state.channelId)) continue;
-    requests.push(awardVoiceMember(guild, state.id, state.channelId, selected).catch((error) => console.error("voice reward failed", { userId: state.id, error: error.message })));
+    if (!state.channelId || state.member?.user.bot) continue;
+    if (guild.voiceStates.cache.get(state.id)?.channelId !== state.channelId) continue;
+    requests.push(withVoiceActivityMutation(state.id, () => {
+      if (guild.voiceStates.cache.get(state.id)?.channelId !== state.channelId) return null;
+      return database.recordVoiceActivity({
+        guildId: guild.id,
+        userId: state.id,
+        channelId: state.channelId,
+        active: true,
+      });
+    }).catch((error) => console.error("voice statistics failed", { userId: state.id, error: error.message })));
+    if (selected.has(state.channelId)) requests.push(awardVoiceMember(guild, state.id, state.channelId, selected).catch((error) => console.error("voice reward failed", { userId: state.id, error: error.message })));
   }
   await Promise.allSettled(requests);
 }
-
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   if (newState.guild.id !== GUILD_ID) return;
   if (oldState.member?.user.bot || newState.member?.user.bot) return;
   if (oldState.channelId === newState.channelId) return;
   try {
+    await withVoiceActivityMutation(newState.id, () => database.recordVoiceActivity({
+      guildId: newState.guild.id,
+      userId: newState.id,
+      channelId: newState.channelId,
+      active: Boolean(newState.channelId),
+    }));
     const config = await database.getGuildRewardConfig(GUILD_ID);
     const selected = config?.channelIds ?? new Set();
     const plan = voiceTransitionPlan({
@@ -816,6 +934,21 @@ async function buildWhitelistPanel(guild, page = 0) {
   };
 }
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function deferActivityReply(interaction) {
+  return interaction.deferReply({ flags: 0 });
+}
+
+async function resolveActivityChannelNames(guild, channels) {
+  const result = { chat: "N/A", voice: "N/A" };
+  await Promise.all(["chat", "voice"].map(async (kind) => {
+    const channelId = channels?.[kind]?.channelId;
+    if (!channelId) return;
+    const channel = await guild.channels.fetch(channelId).catch(() => null);
+    if (channel?.name) result[kind] = `#${channel.name}`;
+  }));
+  return result;
+}
 
 async function assignRoleByName(member, roleName) {
   const roles = await member.guild.roles.fetch();
