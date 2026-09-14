@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 
 const numberFormat = new Intl.NumberFormat("vi-VN");
 
-export async function buildActivityStatCard({ displayName, username, avatarUrl, joinedAt, createdAt, stats, channelNames = {} }) {
+export async function buildActivityStatCard({ displayName, username, avatarUrl, serverIconUrl, joinedAt, createdAt, stats, channelNames = {} }) {
   const avatar = await fetchAvatar(avatarUrl, 96);
+  const serverIcon = await fetchAvatar(serverIconUrl, 24);
   const background = readFileSync(new URL("./assets/activity-stat-background.png", import.meta.url));
   const rows = [["1 ngày", stats.windows.one], ["7 ngày", stats.windows.seven], ["30 ngày", stats.windows.thirty]];
   const chatRows = rows.map(([label, value], index) => `<text x="214" y="${350 + index * 25}" class="muted">${label}</text><text x="520" y="${350 + index * 25}" text-anchor="end" class="rowValue">${numberFormat.format(value.chat)} tin nhắn</text>`).join("");
@@ -12,15 +13,16 @@ export async function buildActivityStatCard({ displayName, username, avatarUrl, 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
   <defs>
     <style>
-      .title{font:700 30px Arial;fill:#f8fafc}.username{font:400 17px Arial;fill:#b8c0c8}.meta{font:600 16px Arial;fill:#f1f3f5}.section{font:700 20px Arial;fill:#f8fafc}.label{font:400 16px Arial;fill:#c0c6cd}.total{font:700 31px Arial;fill:#fff}.muted{font:400 16px Arial;fill:#c0c6cd}.rowValue{font:600 16px Arial;fill:#eef1f4}.rank{font:700 29px Arial;fill:#fff}.small{font:400 14px Arial;fill:#aab1b8}.channel{font:700 18px Arial;fill:#f5f7fa}
+      .title{font:700 30px 'Noto Sans',Arial,sans-serif;fill:#f8fafc}.username{font:400 17px 'Noto Sans',Arial,sans-serif;fill:#b8c0c8}.meta{font:600 16px 'Noto Sans',Arial,sans-serif;fill:#f1f3f5}.section{font:700 20px 'Noto Sans',Arial,sans-serif;fill:#f8fafc}.label{font:400 16px 'Noto Sans',Arial,sans-serif;fill:#c0c6cd}.total{font:700 31px 'Noto Sans',Arial,sans-serif;fill:#fff}.muted{font:400 16px 'Noto Sans',Arial,sans-serif;fill:#c0c6cd}.rowValue{font:600 16px 'Noto Sans',Arial,sans-serif;fill:#eef1f4}.rank{font:700 29px 'Noto Sans',Arial,sans-serif;fill:#fff}.small{font:400 14px 'Noto Sans',Arial,sans-serif;fill:#aab1b8}.channel{font:700 18px 'Noto Sans',Arial,sans-serif;fill:#f5f7fa}
     </style>
     <clipPath id="avatar"><circle cx="180" cy="82" r="46"/></clipPath>
   </defs>
   <rect width="1200" height="800" fill="transparent"/>
   <circle cx="180" cy="82" r="49" fill="#2f353b" stroke="#d4b36a" stroke-width="2"/>
   ${avatar ? `<image href="data:image/png;base64,${avatar}" x="134" y="36" width="92" height="92" clip-path="url(#avatar)" preserveAspectRatio="xMidYMid slice"/>` : `<text x="180" y="92" text-anchor="middle" class="rank">?</text>`}
-  <text x="254" y="62" class="section">HỒ SƠ HOẠT ĐỘNG</text><text x="254" y="98" class="title">${escapeXml(truncate(displayName, 24))}</text><text x="254" y="124" class="username">@${escapeXml(truncate(username ?? displayName, 26))}</text>
-  <rect x="736" y="36" width="132" height="64" rx="14" fill="#171d22" fill-opacity=".62" stroke="#9b8350" stroke-opacity=".45"/><rect x="878" y="36" width="132" height="64" rx="14" fill="#171d22" fill-opacity=".62" stroke="#9b8350" stroke-opacity=".45"/><text x="754" y="60" class="meta">Discord</text><text x="754" y="84" class="username">${escapeXml(formatDate(createdAt))}</text><text x="896" y="60" class="meta">Vào server</text><text x="896" y="84" class="username">${escapeXml(formatDate(joinedAt))}</text>
+  <text x="254" y="78" class="title">${escapeXml(truncate(displayName, 24))}</text><text x="254" y="111" class="username">@${escapeXml(truncate(username ?? displayName, 26))}</text>
+  <g transform="translate(254 132)"><circle cx="10" cy="-5" r="10" fill="#5865f2"/><path d="M4-5c2-5 10-5 12 0v5c-2 2-3 2-5 1l-1-2h-1l-1 2c-2 1-3 1-5-1z" fill="#fff"/><text x="28" y="1" class="username">${escapeXml(formatDate(createdAt))}</text></g>
+  <g transform="translate(424 132)">${serverIcon ? `<image href="data:image/png;base64,${serverIcon}" x="0" y="-15" width="22" height="22" preserveAspectRatio="xMidYMid slice"/>` : `<circle cx="11" cy="-4" r="10" fill="#d4b36a"/>`}<text x="30" y="1" class="username">${escapeXml(formatDate(joinedAt))}</text></g>
   <text x="170" y="202" class="section">💬 Số tin nhắn</text><text x="624" y="202" class="section">🔊 Số giờ voice</text>
   <rect x="170" y="216" width="405" height="218" rx="20" fill="#171d22" fill-opacity=".90"/><rect x="624" y="216" width="405" height="218" rx="20" fill="#171d22" fill-opacity=".90"/>
   <text x="194" y="250" class="label">Tổng tin nhắn</text><text x="194" y="290" class="total">${numberFormat.format(stats.total.chat)} tin nhắn</text><rect x="194" y="310" width="357" height="108" rx="14" fill="#252b30" fill-opacity=".95"/>${chatRows}
@@ -52,7 +54,12 @@ export async function buildActivityRankingCard({ metric, entries, self, profiles
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-function formatDate(value) { return value ? new Date(value).toLocaleDateString("vi-VN") : "Không rõ"; }
+function formatDate(value) {
+  if (!value) return "--/--/----";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--/--/----";
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+}
 function formatHours(seconds) { return (Number(seconds ?? 0) / 3600).toFixed(2); }
 function truncate(value, max) { const text = String(value ?? ""); return [...text].slice(0, max).join("") + ([...text].length > max ? "…" : ""); }
 async function fetchAvatar(url, size) {

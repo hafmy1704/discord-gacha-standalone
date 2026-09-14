@@ -342,6 +342,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         displayName: interaction.member?.displayName ?? interaction.user.globalName ?? interaction.user.username,
         username: interaction.user.username,
         avatarUrl: interaction.user.displayAvatarURL({ extension: "png", size: 128 }),
+        serverIconUrl: interaction.guild?.iconURL({ extension: "png", size: 64 }),
         joinedAt: interaction.member?.joinedAt,
         createdAt: interaction.user.createdAt,
         stats,
