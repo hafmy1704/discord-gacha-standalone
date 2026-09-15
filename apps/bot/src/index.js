@@ -394,7 +394,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             self: storedLeaderboard.self
               ? await resolveActivityEntry(storedLeaderboard.self)
               : null,
-            totalPlayers: storedLeaderboard.entries.length,
           };
         }
         const leaderboard = metric === "chat" || metric === "voice"
@@ -616,7 +615,7 @@ const VOICE_SCAN_INTERVAL_MS = 60 * 1000;
 async function initializeVoiceSessions(guild) {
   const config = await database.getGuildRewardConfig(guild.id);
   const selected = config?.channelIds ?? new Set();
-await database.resetVoiceActivitySessions(guild.id).catch((error) => {
+  await database.resetVoiceActivitySessions(guild.id).catch((error) => {
     if (error.status === 404) {
       console.error("voice analytics reset unavailable; apply migration 003", error.message);
       return;

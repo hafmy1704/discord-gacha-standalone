@@ -204,7 +204,7 @@ test("activity statistics calls atomic RPCs and maps rolling windows", async () 
         windows: { "1": { chat: 2, voiceSeconds: 60 }, "7": { chat: 8, voiceSeconds: 3600 }, "30": { chat: 12, voiceSeconds: 7200 } },
         channels: { chat: { channelId: "chat-1", value: 8 }, voice: { channelId: "voice-1", value: 3600 } },
       }), { status: 200 });
-      return new Response(JSON.stringify({ metric: "chat", entries: [{ user_id: "user-1", value: 12, rank: 3 }], self: { user_id: "user-1", value: 12, rank: 3 } }), { status: 200 });
+      return new Response(JSON.stringify({ metric: "chat", entries: [{ user_id: "user-1", value: 12, rank: 3 }], self: { user_id: "user-1", value: 12, rank: 3 }, totalPlayers: 14 }), { status: 200 });
     },
   });
   await database.recordChatActivity({ guildId: "guild-1", userId: "user-1", channelId: "chat-1", messageId: "message-1" });
@@ -216,4 +216,5 @@ test("activity statistics calls atomic RPCs and maps rolling windows", async () 
   assert.equal(stats.windows.thirty.chat, 12);
   assert.equal(stats.channels.chat.channelId, "chat-1");
   assert.equal(rank.self.rank, 3);
+  assert.equal(rank.totalPlayers, 14);
 });

@@ -507,6 +507,7 @@ function mapActivityLeaderboard(value) {
           rank: Number(value.self.rank ?? 0),
         }
       : null,
+    totalPlayers: Number(value?.totalPlayers ?? 0),
   };
 }
 

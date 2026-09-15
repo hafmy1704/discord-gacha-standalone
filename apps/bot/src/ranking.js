@@ -47,8 +47,8 @@ export function rankingReplyFlags(showAll = false) {
 }
 
 export function deferRankingReply(interaction) {
-  interaction.options.getBoolean("all");
-  return interaction.deferReply({ flags: 0 });
+  const showAll = interaction.options.getBoolean("all") === true;
+  return interaction.deferReply({ flags: rankingReplyFlags(showAll) });
 }
 
 export function topRankingEntries(leaderboard) {

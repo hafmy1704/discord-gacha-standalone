@@ -1,3 +1,5 @@
+begin;
+
 create table if not exists public.activity_hourly_buckets (
   guild_id text not null,
   user_id text not null,
@@ -37,6 +39,7 @@ create table if not exists public.activity_user_totals (
 create index if not exists activity_hourly_window_idx on public.activity_hourly_buckets (guild_id, bucket_start desc);
 create index if not exists activity_hourly_user_window_idx on public.activity_hourly_buckets (guild_id, user_id, bucket_start desc);
 create index if not exists activity_hourly_channel_window_idx on public.activity_hourly_buckets (guild_id, channel_id, bucket_start desc);
+create index if not exists activity_message_receipts_created_idx on public.activity_message_receipts (created_at);
 
 alter table public.activity_hourly_buckets enable row level security;
 alter table public.activity_message_receipts enable row level security;
@@ -72,7 +75,7 @@ create or replace function public.record_voice_activity(p_guild_id text, p_user_
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_session public.activity_voice_sessions%rowtype;
-  v_total_seconds integer := 0;
+  v_total_seconds bigint := 0;
   v_segment_seconds integer;
   v_cursor_at timestamptz;
   bucket timestamptz;
@@ -105,16 +108,12 @@ $$;
 
 create or replace function public.reset_voice_activity_sessions(p_guild_id text)
 returns bigint language plpgsql security definer set search_path = public as $$
-declare session_row record; reset_count bigint := 0;
+declare reset_count bigint := 0;
 begin
-  for session_row in
-    select guild_id, user_id
-    from public.activity_voice_sessions
-    where guild_id = p_guild_id
-  loop
-    perform public.record_voice_activity(session_row.guild_id, session_row.user_id, null, false, now());
-    reset_count := reset_count + 1;
-  end loop;
+  -- A persisted session only proves the user was present at the last heartbeat.
+  -- Delete it on startup instead of crediting the bot's offline interval.
+  delete from public.activity_voice_sessions where guild_id = p_guild_id;
+  get diagnostics reset_count = row_count;
   return reset_count;
 end;
 $$;
@@ -143,18 +142,43 @@ $$;
 
 create or replace function public.get_activity_leaderboard(p_guild_id text, p_user_id text, p_metric text, p_limit integer default 10)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare rows jsonb; self_row jsonb;
+declare rows jsonb; self_row jsonb; v_total_players bigint;
 begin
   if p_metric not in ('chat', 'voice') then raise exception using message = 'invalid_activity_metric'; end if;
   if p_limit is null or p_limit < 1 or p_limit > 25 then raise exception using message = 'invalid_activity_limit'; end if;
-  if p_metric = 'chat' then
-    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id order by value desc, user_id limit p_limit) x;
-    select to_jsonb(x) into self_row from (select user_id, sum(chat_messages)::bigint value, row_number() over (order by sum(chat_messages) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id) x where user_id = p_user_id;
-  else
-    select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into rows from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id order by value desc, user_id limit p_limit) x;
-    select to_jsonb(x) into self_row from (select user_id, sum(voice_seconds)::bigint value, row_number() over (order by sum(voice_seconds) desc, user_id) rank from public.activity_hourly_buckets where guild_id = p_guild_id and bucket_start >= public.activity_window_start(interval '30 days') group by user_id) x where user_id = p_user_id;
-  end if;
-  return jsonb_build_object('metric', p_metric, 'entries', rows, 'self', self_row);
+  with ranked as (
+    select
+      user_id,
+      case when p_metric = 'chat' then sum(chat_messages)::bigint else sum(voice_seconds)::bigint end as value,
+      row_number() over (
+        order by
+          case when p_metric = 'chat' then sum(chat_messages) else sum(voice_seconds) end desc,
+          user_id
+      ) as rank,
+      count(*) over () as total_players
+    from public.activity_hourly_buckets
+    where guild_id = p_guild_id
+      and bucket_start >= public.activity_window_start(interval '30 days')
+      and case when p_metric = 'chat' then chat_messages > 0 else voice_seconds > 0 end
+    group by user_id
+  )
+  select
+    coalesce(
+      jsonb_agg(
+        jsonb_build_object('user_id', user_id, 'value', value, 'rank', rank)
+        order by rank
+      ) filter (where rank <= p_limit),
+      '[]'::jsonb
+    ),
+    (
+      select jsonb_build_object('user_id', user_id, 'value', value, 'rank', rank)
+      from ranked self_rank
+      where self_rank.user_id = p_user_id
+    ),
+    coalesce(max(ranked.total_players), 0)
+  into rows, self_row, v_total_players
+  from ranked;
+  return jsonb_build_object('metric', p_metric, 'entries', rows, 'self', self_row, 'totalPlayers', v_total_players);
 end;
 $$;
 
@@ -169,9 +193,9 @@ begin
 end;
 $$;
 
-revoke all on function public.activity_window_start(interval) from public, anon, authenticated;
+revoke all on function public.activity_bucket_start(timestamptz), public.activity_window_start(interval) from public, anon, authenticated;
 
-grant execute on function public.activity_window_start(interval) to service_role;
+grant execute on function public.activity_bucket_start(timestamptz), public.activity_window_start(interval) to service_role;
 
 revoke all on function public.record_chat_activity(text, text, text, text, timestamptz), public.record_voice_activity(text, text, text, boolean, timestamptz), public.reset_voice_activity_sessions(text), public.get_activity_window(text, text, interval), public.get_activity_channels(text, text, interval), public.get_activity_stats(text, text), public.get_activity_leaderboard(text, text, text, integer), public.cleanup_activity_statistics() from public, anon, authenticated;
 grant execute on function public.record_chat_activity(text, text, text, text, timestamptz), public.record_voice_activity(text, text, text, boolean, timestamptz), public.reset_voice_activity_sessions(text), public.get_activity_window(text, text, interval), public.get_activity_channels(text, text, interval), public.get_activity_stats(text, text), public.get_activity_leaderboard(text, text, text, integer), public.cleanup_activity_statistics() to service_role;
@@ -265,3 +289,7 @@ revoke all on function public.get_level_leaderboard(text, text, integer)
   from public, anon, authenticated;
 grant execute on function public.get_level_leaderboard(text, text, integer)
   to service_role;
+
+notify pgrst, 'reload schema';
+
+commit;
